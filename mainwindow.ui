@@ -30,7 +30,7 @@
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QLabel" name="label_3">
+   <widget class="QLabel" name="label_sensor_type">
     <property name="geometry">
      <rect>
       <x>40</x>
@@ -59,7 +59,7 @@
      <string>Start</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_5">
+   <widget class="QLabel" name="label_sensitivity">
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -288,7 +288,7 @@
      </item>
     </layout>
    </widget>
-   <widget class="QLabel" name="label_6">
+   <widget class="QLabel" name="label_damp">
     <property name="geometry">
      <rect>
       <x>320</x>
@@ -301,7 +301,7 @@
      <string>damp</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_7">
+   <widget class="QLabel" name="label_stiffness">
     <property name="geometry">
      <rect>
       <x>390</x>
@@ -314,7 +314,7 @@
      <string>stiffness</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_8">
+   <widget class="QLabel" name="label_threshold">
     <property name="geometry">
      <rect>
       <x>470</x>
@@ -367,7 +367,7 @@
      </item>
     </layout>
    </widget>
-   <widget class="QLabel" name="label_9">
+   <widget class="QLabel" name="label_calibration">
     <property name="geometry">
      <rect>
       <x>280</x>
@@ -615,7 +615,7 @@ border-color:grey;
      <rect>
       <x>186</x>
       <y>-30</y>
-      <width>20</width>
+      <width>16</width>
       <height>591</height>
      </rect>
     </property>
@@ -623,7 +623,7 @@ border-color:grey;
      <string/>
     </property>
    </widget>
-   <widget class="QLabel" name="label_10">
+   <widget class="QLabel" name="label_limit">
     <property name="geometry">
      <rect>
       <x>560</x>
@@ -708,7 +708,7 @@ border-color:grey;
      </item>
     </layout>
    </widget>
-   <widget class="QLabel" name="label_12">
+   <widget class="QLabel" name="label_bufferLimit">
     <property name="geometry">
      <rect>
       <x>670</x>
@@ -721,7 +721,7 @@ border-color:grey;
      <string>BuffSize Limit</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_13">
+   <widget class="QLabel" name="label_control_period">
     <property name="geometry">
      <rect>
       <x>670</x>
@@ -769,7 +769,7 @@ border-color:grey;
       <x>210</x>
       <y>240</y>
       <width>591</width>
-      <height>20</height>
+      <height>16</height>
      </rect>
     </property>
     <property name="text">
@@ -811,7 +811,7 @@ border-color:grey;
      <enum>Qt::Horizontal</enum>
     </property>
    </widget>
-   <widget class="QLabel" name="label_14">
+   <widget class="QLabel" name="label_filter1">
     <property name="geometry">
      <rect>
       <x>220</x>
@@ -824,7 +824,7 @@ border-color:grey;
      <string>Filter1</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_15">
+   <widget class="QLabel" name="label_filter2">
     <property name="geometry">
      <rect>
       <x>220</x>
@@ -884,7 +884,7 @@ border-color:grey;
       <string>0</string>
      </property>
     </widget>
-    <widget class="QLabel" name="label_2">
+    <widget class="QLabel" name="label_ori">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -897,7 +897,7 @@ border-color:grey;
       <string>Orientation</string>
      </property>
     </widget>
-    <widget class="QLabel" name="label">
+    <widget class="QLabel" name="label_position">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -978,17 +978,17 @@ border-color:grey;
     <property name="frameShadow">
      <enum>QFrame::Raised</enum>
     </property>
-    <widget class="QLabel" name="label_11">
+    <widget class="QLabel" name="label_torque">
      <property name="geometry">
       <rect>
        <x>10</x>
        <y>44</y>
-       <width>51</width>
+       <width>81</width>
        <height>20</height>
       </rect>
      </property>
      <property name="text">
-      <string>Torque</string>
+      <string>Torque(Nm)</string>
      </property>
     </widget>
     <widget class="QLineEdit" name="lEForceZ">
@@ -1004,17 +1004,17 @@ border-color:grey;
       <string>0</string>
      </property>
     </widget>
-    <widget class="QLabel" name="label_4">
+    <widget class="QLabel" name="label_force">
      <property name="geometry">
       <rect>
        <x>9</x>
        <y>8</y>
-       <width>51</width>
+       <width>81</width>
        <height>20</height>
       </rect>
      </property>
      <property name="text">
-      <string>Force</string>
+      <string>Force(N)</string>
      </property>
     </widget>
     <widget class="QLineEdit" name="lETorqueZ">
@@ -1092,16 +1092,6 @@ border-color:grey;
      </property>
     </widget>
    </widget>
-   <widget class="QLineEdit" name="lEOutPut">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>470</y>
-      <width>91</width>
-      <height>61</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QPushButton" name="pBRobot">
     <property name="geometry">
      <rect>
@@ -1134,7 +1124,11 @@ border-color:grey;
     <bool>false</bool>
    </attribute>
   </widget>
-  <widget class="QStatusBar" name="statusBar"/>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>

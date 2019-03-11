@@ -58,7 +58,7 @@ public:
     static double m_toolOrientation[9];
 
 signals:
-    void signal_handduiding_failed();
+    void signal_handduiding_failed(const QString str = NULL);
 
 private:
     float average_sensor_data_[SENSOR_DIMENSION];

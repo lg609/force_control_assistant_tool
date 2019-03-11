@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 void MainWindow::deviceInitial()
 {
+    displayMessage("Initial F/T sensor...", 2000);
     QString sensorType, table, IsInitialed;
     bool flag;
     paraType_.insert(std::pair<std::string, int>("sensitivity", SENSITIVITY));
@@ -77,9 +78,10 @@ void MainWindow::deviceInitial()
     }
     updateUI();
 
+    displayMessage("Initial robot service...", 2000);
     flag = robot_control_->initRobotService();
-    connect(RobotControl::instance(), SIGNAL(signal_handduiding_failed()),
-            this, SLOT(slot_handduiding_failed()));
+    connect(RobotControl::instance(), SIGNAL(signal_handduiding_failed(const QString str)),
+            this, SLOT(slot_handduiding_failed(const QString str)));
     if(!flag)
     {
         QString str = QString("connect to control box failed!");
@@ -87,6 +89,7 @@ void MainWindow::deviceInitial()
     }
     else
     {
+        displayMessage("Set Tool Property");
         robot_control_->setToolProperty();
         hand_guiding_ = new std::thread(boost::bind(&MainWindow::handGuiding, this));
     }
@@ -99,6 +102,14 @@ void MainWindow::handGuiding()
 
 void MainWindow::UIInitial()
 {
+    displayMessage("Initial UI...", 1000);
+
+    ui->statusBar->setSizeGripEnabled(false);//
+    QLabel *permanent=new QLabel(this);
+    permanent->setFrameStyle(QFrame::Box|QFrame::Sunken);
+    permanent->setText(tr("http://www.aubo-robotics.cn/"));
+    ui->statusBar->addPermanentWidget(permanent);//
+
     ui->lEPosX->setValidator(new QDoubleValidator(-1.0, 1.0, 5, this));
     ui->lEPosY->setValidator(new QDoubleValidator(-1.0, 1.0, 5, this));
     ui->lEPosZ->setValidator(new QDoubleValidator(-1.0, 1.0, 5, this));
@@ -263,27 +274,37 @@ void MainWindow::on_cBSensorName_currentIndexChanged(int index)
     {
 //        ui->pBStart->setEnabled(true);
     }
+    displayMessage("Switch to " + sensorType + "sensor.");
 }
 
 void MainWindow::on_pBPos1_clicked()
 {
     ui->pBPos1->setEnabled(false);
     if(robot_control_->moveToTargetPose(1) == 0)
+    {
+        displayMessage("robot arrives at position 1");
         ft_sensor_data_process_->obtainCalibrationPos(1); //calibration sensor data of pose1?;
+    }
 }
 
 void MainWindow::on_pBPos2_clicked()
 {
     ui->pBPos2->setEnabled(false);
     if(robot_control_->moveToTargetPose(2) == 0)
+    {
+        displayMessage("robot arrives at position 2");
         ft_sensor_data_process_->obtainCalibrationPos(2);
+    }
 }
 
 void MainWindow::on_pBPos3_clicked()
 {
     ui->pBPos3->setEnabled(false);
     if(robot_control_->moveToTargetPose(3) == 0)
+    {
+        displayMessage("robot arrives at position 3");
         ft_sensor_data_process_->obtainCalibrationPos(3);
+    }
 }
 
 void MainWindow::on_pBCalibration_clicked()
@@ -299,7 +320,10 @@ void MainWindow::on_pBCalibration_clicked()
                 QMessageBox::information(this,"Title",str);
             }
             else
+            {
                 ui->pBStart->setEnabled(true);
+                displayMessage("obatin sensor offset from database.");
+            }
         }
         else
         {
@@ -307,6 +331,7 @@ void MainWindow::on_pBCalibration_clicked()
             {
                 ft_sensor_data_process_->setFTSensorOffsetToDB();
                 ui->pBStart->setEnabled(true);
+                displayMessage("update sensor offset from measurment.");
             }
         }
         ui->pBPos1->setEnabled(false);
@@ -611,24 +636,21 @@ void MainWindow::on_pBStart_clicked()
         ui->pBStart->setText("Stop");
         robot_control_->enterTcp2CANMode(true);
         ui->cBSensorName->setEnabled(false);
+        displayMessage("start handguiding mode.");
     }
     else
     {
         ui->pBStart->setText("Start");
         robot_control_->enterTcp2CANMode(false);
         ui->cBSensorName->setEnabled(true);
+        displayMessage("exit handguiding mode.");
     }
 }
 
-void MainWindow::slot_handduiding_failed()
+void MainWindow::slot_handduiding_failed(const QString str)
 {
     ui->pBStart->setText("Start");
     robot_control_->enterTcp2CANMode(false);
-}
-
-void MainWindow::on_lEOutPut_textEdited(const QString &arg1)
-{
-    ui->lEOutPut->setText("");
 }
 
 void MainWindow::on_pBRobot_clicked()
@@ -636,3 +658,10 @@ void MainWindow::on_pBRobot_clicked()
 //    ui->pBRobot->setEnabled(false);
     robot_control_->initRobotService();
 }
+
+void MainWindow::displayMessage(const QString str, int timeout)
+{
+    ui->statusBar->showMessage(str);
+//    ui->statusBar->
+}
+

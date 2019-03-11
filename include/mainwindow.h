@@ -135,6 +135,7 @@ private:
     void updateUI();
     void updateDataBase(QString arg1, QString table, QString name, int index);
     void handGuiding();
+    void displayMessage(const QString str, int timeout = 0);
     Ui::MainWindow *ui;
     FTSensorDataProcess *ft_sensor_data_process_;
     RobotControl *robot_control_;
@@ -143,10 +144,7 @@ private:
     std::map<std::string, int> paraType_;
 
 private slots:
-    void slot_handduiding_failed();
-//    void on_lineEdit_textEdited(const QString &arg1);
-    void on_lEOutPut_textEdited(const QString &arg1);
-    void on_pushButton_3_clicked();
+    void slot_handduiding_failed(const QString str);
 
 };
 

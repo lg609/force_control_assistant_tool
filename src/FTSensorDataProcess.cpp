@@ -9,8 +9,6 @@ int FTSensorDataProcess::s_filter2 = 0;
 double FTSensorDataProcess::s_sensitivity[SENSOR_DIMENSION] = {0};
 double FTSensorDataProcess::s_damp[SENSOR_DIMENSION] = {0};
 double FTSensorDataProcess::s_stiffness[SENSOR_DIMENSION] = {0};
-double FTSensorDataProcess::s_threshold[SENSOR_DIMENSION] = {0};
-double FTSensorDataProcess::s_limit[SENSOR_DIMENSION] = {0};
 double FTSensorDataProcess::s_sensor_data[SENSOR_DIMENSION] = {0};
 double FTSensorDataProcess::s_sensor_offset[SENSOR_DIMENSION] = {0};
 
@@ -117,11 +115,9 @@ void FTSensorDataProcess::setFTSensorOffsetToDB()
         insertFTDBData("parameter","offset", offset);
     else
     {
+//        insertFTDBData("parameter","offset", s_sensor_offset);
         for(int i = 0; i < SENSOR_DIMENSION; i++)
-        {
-            setFTDBData("parameter","offset", QString::number(s_sensor_offset[i]), i);
-            getFTDBData("parameter", "offset", offset);
-        }
+            setFTDBData("parameter","offset", QString::number(s_sensor_offset[i]), i+1);
     }
 }
 
@@ -155,6 +151,19 @@ void FTSensorDataProcess::getFTSensorData()
         {
             ft_sensor_->obtainFTSensorData(m_ftData);
             //qDebug()<<m_ftData[0]<<m_ftData[1]<<m_ftData[2]<<m_ftData[3]<<m_ftData[4]<<m_ftData[5];
+            double m_range[6] = {0};
+            ft_sensor_->getFTSensorRange(m_range);
+            for(int i = 0; i < SENSOR_DIMENSION; i++)
+            {
+
+                if(m_ftData[i]>m_range[i])
+                {
+                    std::cout<<"Force Exceed the Range!";
+                    //ANOTHER WINDOW
+                    emit signal_sensor_over_range("Force Exceed the Sensor Range!");
+                }
+
+            }
             if(sensor_data_calibrated_)
             {
                 for(int i = 0; i < SENSOR_DIMENSION; i++)
@@ -165,26 +174,6 @@ void FTSensorDataProcess::getFTSensorData()
                     P[i] = (1 - K[i]) * pp[i];
                     m_ftDataOld[i] = m_ftData[i];
                     m_ftData[i] -= s_sensor_offset[i];    //Subtract the offset force and torque
-                }
-
-                //set the threshold value
-                for(int i = 0; i < SENSOR_DIMENSION; i++)
-                {
-                    //threshold + max limit
-                    if(abs(m_ftData[i]) < s_threshold[i])
-                        m_ftData[i] = 0;
-                    else if (m_ftData[i] > 0)
-                    {
-                        m_ftData[i] -= s_threshold[i];
-                        if(m_ftData[i] > s_limit[i])
-                            m_ftData[i] = s_limit[i];
-                    }
-                    else
-                    {
-                        m_ftData[i] += s_threshold[i];
-                        if(m_ftData[i] < -s_limit[i])
-                            m_ftData[i] = -s_limit[i];
-                    }
                 }
             }
 

@@ -15,10 +15,9 @@
 #include <QTimer>
 #include <QTime>
 
-using namespace std;
 
 
-#define SERVER_HOST "192.168.1.100"
+#define SERVER_HOST "192.168.1.101"
 #define SERVER_PORT 8899
 #define MAX_ACCELERATION 500.0/180.0*M_PI
 #define MAX_VELOCITY 90.0/180.0*M_PI
@@ -41,6 +40,7 @@ public:
 
     static RobotControl *instance();
     bool initRobotService();
+    bool updateRobotStatus();
     void startHandGuiding();
     int enterTcp2CANMode(bool flag);
     void setToolProperty();
@@ -48,6 +48,9 @@ public:
 
 
     bool ObtainCenterofMass();
+    RMatrix toolToBase(double current_joints[]);
+    void getGravityOfToolInSensor(double current_joints[]);
+    void externalForceOnToolEnd(double current_joints[]);
 
     static int s_control_period;
     static bool s_start_handguiding;
@@ -56,12 +59,18 @@ public:
     static double s_tool_pose[CARTESIAN_FREEDOM];
     static double m_toolPosition[3];
     static double m_toolOrientation[9];
+    static double s_threshold[SENSOR_DIMENSION];
+    static double s_limit[SENSOR_DIMENSION];
+    static double force_of_end_[CARTESIAN_FREEDOM];
+    static double tool_mass;
+    static double center_mass[3];
 
 signals:
-    void signal_handduiding_failed(const QString str = NULL);
+    void signal_handduiding_failed(QString);
 
 private:
-    float average_sensor_data_[SENSOR_DIMENSION];
+    double average_sensor_data_[SENSOR_DIMENSION];
+    double raw_sensor_data_[SENSOR_DIMENSION];
 
     aubo_robot_namespace::MoveRelative relative_pose_;
     double relative_axis_angles_[CARTESIAN_FREEDOM];
@@ -73,6 +82,10 @@ private:
     double last_velocities_[CARTESIAN_FREEDOM];
     double current_acclerations_[CARTESIAN_FREEDOM];
     double current_velocities_[CARTESIAN_FREEDOM];
+
+    double gravity_component[CARTESIAN_FREEDOM];
+
+
 
     aubo_robot_namespace::wayPoint_S theoretical_way_point_;
     aubo_robot_namespace::wayPoint_S  current_way_point_;

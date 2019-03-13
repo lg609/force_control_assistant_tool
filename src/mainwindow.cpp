@@ -80,8 +80,10 @@ void MainWindow::deviceInitial()
 
     displayMessage("Initial robot service...", 2000);
     flag = robot_control_->initRobotService();
-    connect(RobotControl::instance(), SIGNAL(signal_handduiding_failed(const QString str)),
-            this, SLOT(slot_handduiding_failed(const QString str)));
+//    connect(RobotControl::instance(), SIGNAL(signal_handduiding_failed()), this, SLOT(slot_handduiding_failed()));
+    connect(ft_sensor_data_process_, SIGNAL(signal_sensor_over_range(QString)), this, SLOT(slot_sensor_overrange(QString)));
+    connect(robot_control_, SIGNAL(signal_handduiding_failed(QString)), this, SLOT(slot_handduiding_failed(QString)));
+
     if(!flag)
     {
         QString str = QString("connect to control box failed!");
@@ -222,21 +224,21 @@ void MainWindow::updateUI()
     ui->lEStiffOriZ->setText(QString::number(FTSensorDataProcess::s_stiffness[5]));
 
 
-    flag = ft_sensor_data_process_->getFTDBData("parameter", "threshold", FTSensorDataProcess::s_threshold);
-    ui->lEForceXThreshold->setText(QString::number(FTSensorDataProcess::s_threshold[0]));
-    ui->lEForceYThreshold->setText(QString::number(FTSensorDataProcess::s_threshold[1]));
-    ui->lEForceZThreshold->setText(QString::number(FTSensorDataProcess::s_threshold[2]));
-    ui->lETorqueXThreshold->setText(QString::number(FTSensorDataProcess::s_threshold[3]));
-    ui->lETorqueYThreshold->setText(QString::number(FTSensorDataProcess::s_threshold[4]));
-    ui->lETorqueZThreshold->setText(QString::number(FTSensorDataProcess::s_threshold[5]));
+    flag = ft_sensor_data_process_->getFTDBData("parameter", "threshold", RobotControl::s_threshold);
+    ui->lEForceXThreshold->setText(QString::number(RobotControl::s_threshold[0]));
+    ui->lEForceYThreshold->setText(QString::number(RobotControl::s_threshold[1]));
+    ui->lEForceZThreshold->setText(QString::number(RobotControl::s_threshold[2]));
+    ui->lETorqueXThreshold->setText(QString::number(RobotControl::s_threshold[3]));
+    ui->lETorqueYThreshold->setText(QString::number(RobotControl::s_threshold[4]));
+    ui->lETorqueZThreshold->setText(QString::number(RobotControl::s_threshold[5]));
 
-    flag = ft_sensor_data_process_->getFTDBData("parameter", "limit", FTSensorDataProcess::s_limit);
-    ui->lEForceXLimit->setText(QString::number(FTSensorDataProcess::s_limit[0]));
-    ui->lEForceYLimit->setText(QString::number(FTSensorDataProcess::s_limit[1]));
-    ui->lEForceZLimit->setText(QString::number(FTSensorDataProcess::s_limit[2]));
-    ui->lETorqueXLimit->setText(QString::number(FTSensorDataProcess::s_limit[3]));
-    ui->lETorqueYLimit->setText(QString::number(FTSensorDataProcess::s_limit[4]));
-    ui->lETorqueZLimit->setText(QString::number(FTSensorDataProcess::s_limit[5]));
+    flag = ft_sensor_data_process_->getFTDBData("parameter", "limit", RobotControl::s_limit);
+    ui->lEForceXLimit->setText(QString::number(RobotControl::s_limit[0]));
+    ui->lEForceYLimit->setText(QString::number(RobotControl::s_limit[1]));
+    ui->lEForceZLimit->setText(QString::number(RobotControl::s_limit[2]));
+    ui->lETorqueXLimit->setText(QString::number(RobotControl::s_limit[3]));
+    ui->lETorqueYLimit->setText(QString::number(RobotControl::s_limit[4]));
+    ui->lETorqueZLimit->setText(QString::number(RobotControl::s_limit[5]));
 
     flag = ft_sensor_data_process_->getFTDBData("parameter", "pos", RobotControl::s_tool_pose);
     ui->lEPosX->setText(QString::number(RobotControl::s_tool_pose[0]));
@@ -321,7 +323,14 @@ void MainWindow::on_pBCalibration_clicked()
             }
             else
             {
+                double value[6] = {0.0};
+                ft_sensor_data_process_->getFTDBData("parameter", "toolProperty", value);
+                RobotControl::tool_mass = value[0];
+                RobotControl::center_mass[0] = value[1];
+                RobotControl::center_mass[1] = value[2];
+                RobotControl::center_mass[2] = value[3];
                 ui->pBStart->setEnabled(true);
+                FTSensorDataProcess::sensor_data_calibrated_ = true;
                 displayMessage("obatin sensor offset from database.");
             }
         }
@@ -330,7 +339,15 @@ void MainWindow::on_pBCalibration_clicked()
             if(robot_control_->ObtainCenterofMass())
             {
                 ft_sensor_data_process_->setFTSensorOffsetToDB();
+                double value[6] = {0.0};
+//                ft_sensor_data_process_->insertFTDBData("parameter","toolProperty", value);
+                ft_sensor_data_process_->setFTDBData("parameter","toolProperty", QString::number(RobotControl::tool_mass), 1);
+                ft_sensor_data_process_->setFTDBData("parameter","toolProperty", QString::number(RobotControl::center_mass[0]), 2);
+                ft_sensor_data_process_->setFTDBData("parameter","toolProperty", QString::number(RobotControl::center_mass[1]), 3);
+                ft_sensor_data_process_->setFTDBData("parameter","toolProperty", QString::number(RobotControl::center_mass[2]), 4);
+
                 ui->pBStart->setEnabled(true);
+                FTSensorDataProcess::sensor_data_calibrated_ = true;
                 displayMessage("update sensor offset from measurment.");
             }
         }
@@ -342,6 +359,8 @@ void MainWindow::on_pBCalibration_clicked()
     }
     else
     {
+        FTSensorDataProcess::sensor_data_calibrated_ = true;
+        ui->pBStart->setEnabled(false);
         ui->pBCalibration->setText("Calibrate");
         ui->pBPos1->setEnabled(true);
         ui->pBPos2->setEnabled(true);
@@ -352,13 +371,20 @@ void MainWindow::on_pBCalibration_clicked()
 void MainWindow::updateData()
 {
     double data[SENSOR_DIMENSION]={0};
-    memcpy(data, FTSensorDataProcess::s_sensor_data, sizeof(double)*SENSOR_DIMENSION);
+    memcpy(data, RobotControl::force_of_end_, sizeof(double)*SENSOR_DIMENSION);
     ui->lEForceX->setText(QString::number(data[0]));
     ui->lEForceY->setText(QString::number(data[1]));
     ui->lEForceZ->setText(QString::number(data[2]));
     ui->lETorqueX->setText(QString::number(data[3]));
     ui->lETorqueY->setText(QString::number(data[4]));
     ui->lETorqueZ->setText(QString::number(data[5]));
+    memcpy(data, FTSensorDataProcess::s_sensor_data, sizeof(double)*SENSOR_DIMENSION);
+    ui->label_Fx->setText(QString::number(data[0]));
+    ui->label_Fy->setText(QString::number(data[1]));
+    ui->label_Fz->setText(QString::number(data[2]));
+    ui->label_Tx->setText(QString::number(data[3]));
+    ui->label_Ty->setText(QString::number(data[4]));
+    ui->label_Tz->setText(QString::number(data[5]));
 }
 
 void MainWindow::on_rBPos_clicked()
@@ -437,8 +463,8 @@ void MainWindow::updateDataBase(QString arg1, QString table, QString name, int i
         case SENSITIVITY: FTSensorDataProcess::s_sensitivity[index-1] = arg1.toDouble();break;
         case DAMP: FTSensorDataProcess::s_damp[index-1] = arg1.toDouble();break;
         case STIFFNESS: FTSensorDataProcess::s_stiffness[index-1] = arg1.toDouble();break;
-        case THRESHOLD: FTSensorDataProcess::s_threshold[index-1] = arg1.toDouble();break;
-        case LIMIT: FTSensorDataProcess::s_limit[index-1] = arg1.toDouble();break;
+        case THRESHOLD: RobotControl::s_threshold[index-1] = arg1.toDouble();break;
+        case LIMIT: RobotControl::s_limit[index-1] = arg1.toDouble();break;
         case POS: RobotControl::s_tool_pose[index-1] = arg1.toDouble();break;
     }
 }
@@ -636,6 +662,9 @@ void MainWindow::on_pBStart_clicked()
         ui->pBStart->setText("Stop");
         robot_control_->enterTcp2CANMode(true);
         ui->cBSensorName->setEnabled(false);
+        ui->gBDragMode->setEnabled(false);
+        ui->gBModel->setEnabled(false);
+        ui->gBCalculateMethod->setEnabled(false);
         displayMessage("start handguiding mode.");
     }
     else
@@ -643,14 +672,27 @@ void MainWindow::on_pBStart_clicked()
         ui->pBStart->setText("Start");
         robot_control_->enterTcp2CANMode(false);
         ui->cBSensorName->setEnabled(true);
+        ui->gBDragMode->setEnabled(true);
+        ui->gBModel->setEnabled(true);
+        ui->gBCalculateMethod->setEnabled(true);
         displayMessage("exit handguiding mode.");
     }
 }
 
-void MainWindow::slot_handduiding_failed(const QString str)
+void MainWindow::slot_handduiding_failed(QString str)
 {
     ui->pBStart->setText("Start");
     robot_control_->enterTcp2CANMode(false);
+    displayMessage(str, 2000);
+    displayMessage("Press Reset Button, Then press Reclibrate, then press Pose3");
+}
+
+void MainWindow::slot_sensor_overrange(QString str)
+{
+    ui->pBStart->setText("Start");
+    robot_control_->enterTcp2CANMode(false);
+    displayMessage(str);
+    QMessageBox::warning(this,"Title",str);
 }
 
 void MainWindow::on_pBRobot_clicked()
@@ -661,7 +703,7 @@ void MainWindow::on_pBRobot_clicked()
 
 void MainWindow::displayMessage(const QString str, int timeout)
 {
-    ui->statusBar->showMessage(str);
+    ui->statusBar->showMessage(str,timeout);
 //    ui->statusBar->
 }
 

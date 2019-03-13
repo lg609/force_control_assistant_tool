@@ -2,9 +2,17 @@
 
 CalibrationResponse calibrationResponse;  // global variable to hold calibration info datas
 
- OptoForceSensor:: OptoForceSensor()
+double OptoForceSensor::s_range[SENSOR_DIMENSION] = {300,300,800,10,10,15};
+
+ OptoForceSensor::OptoForceSensor()
  {
 
+ }
+
+
+ void OptoForceSensor::getFTSensorRange(double range[])
+ {
+     memcpy(range, s_range, sizeof(double)*SENSOR_DIMENSION);
  }
 
 /* Sleep ms milliseconds */

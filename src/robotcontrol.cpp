@@ -7,6 +7,11 @@ double RobotControl::s_accumulate_time = 0.0;
 double RobotControl::s_tool_pose[CARTESIAN_FREEDOM] = {0};           //TOOL POSE relative to the robot end
 double RobotControl::m_toolPosition[3] = {0};
 double RobotControl::m_toolOrientation[9] = {0};
+double RobotControl::s_threshold[SENSOR_DIMENSION] = {0};
+double RobotControl::s_limit[SENSOR_DIMENSION] = {0};
+double RobotControl::force_of_end_[CARTESIAN_FREEDOM] = {0};
+double RobotControl::tool_mass = 0.0;
+double RobotControl::center_mass[3] = {0};
 
 static RobotControl *s_instance = 0;
 
@@ -37,6 +42,34 @@ RobotControl::~RobotControl()
     robotServiceSend.robotServiceRobotShutdown();
     robotServiceSend.robotServiceLogout();
 }
+bool RobotControl::updateRobotStatus()
+{
+    /** Get the intial value of theoretical waypoint**/
+    int ret = robotServiceReceive.robotServiceGetCurrentWaypointInfo(theoretical_way_point_);
+
+    for(int i = 0; i < aubo_robot_namespace::ARM_DOF; i++)
+    {
+        average_sensor_data_[i] = 0;
+        last_acclerations_[i] = 0;
+        current_acclerations_[i] = 0;
+        current_velocities_[i] = 0.0;
+        last_velocities_[i] = 0.0;
+        relative_position_[i] = 0.0;
+        last_send_joints_[i] = theoretical_way_point_.jointpos[i];
+        //penult_send_joints_[i] = last_send_joints_[i];
+    }
+
+    //first ensure the right teach mode
+    enterTcp2CANMode(false);
+
+    double R1[9];
+    Util::quaternionToOriMatrix(theoretical_way_point_.orientation, R1);
+    Util::hMatrixMultiply(R1, theoretical_way_point_.cartPos.positionVector, m_toolOrientation, m_toolPosition, &initial_way_point_);
+
+    //set the tool's parameters
+    setToolProperty();
+    return !(bool)ret;
+}
 
 bool RobotControl::initRobotService()
 {
@@ -62,7 +95,7 @@ bool RobotControl::initRobotService()
     memset(&toolDynamicsParam, 0, sizeof(toolDynamicsParam));
 
     ret = robotServiceSend.rootServiceRobotStartup(toolDynamicsParam/**tool dynamical parameters**/,
-                                                   6        /*collision class*/,
+                                                   0        /*collision class*/,
                                                    true     /*Allow read pose, true*/,
                                                    true,    /*Default true */
                                                    1000,    /*defaault 1000 */
@@ -78,24 +111,9 @@ bool RobotControl::initRobotService()
     ret = robotServiceSend.robotServiceSetGlobalMoveJointMaxAcc(joint_max_acc_);
     /** Set max Velocity ***/
     ret = robotServiceSend.robotServiceSetGlobalMoveJointMaxVelc(joint_max_velc_);
-    /** Get the intial value of theoretical waypoint**/
-    ret = robotServiceReceive.robotServiceGetCurrentWaypointInfo(theoretical_way_point_);
-    flag = !(bool)ret;
-    for(int i = 0; i < aubo_robot_namespace::ARM_DOF; i++)
-    {
-        last_send_joints_[i] = theoretical_way_point_.jointpos[i];
-        //penult_send_joints_[i] = last_send_joints_[i];
-    }
-    //first ensure the right teach mode
-    enterTcp2CANMode(false);
+    flag = updateRobotStatus();
 
-    double R1[9];
-    Util::quaternionToOriMatrix(theoretical_way_point_.orientation, R1);
-    Util::hMatrixMultiply(R1, theoretical_way_point_.cartPos.positionVector, m_toolOrientation, m_toolPosition, &initial_way_point_);
-
-    //set the tool's parameters
-    setToolProperty();
-    return ret;
+    return flag;
 }
 
 void RobotControl::startHandGuiding()
@@ -146,11 +164,12 @@ void RobotControl::startHandGuiding()
                 addSize = 2;
                 for(int bufferCount = 1; bufferCount <= addSize; bufferCount++)
                 {
+                    externalForceOnToolEnd(last_send_joints_);     //obtain the force of end;
                     //use the model to get the pose increament
                     for(int i = 0; i < aubo_robot_namespace::ARM_DOF; i++)
                     {
                         //First-order lag filtering
-                        average_sensor_data_[i] = FTSensorDataProcess::s_sensor_data[i] * 0.4 + average_sensor_data_[i] * 0.6;
+                        average_sensor_data_[i] = force_of_end_[i] * 0.4 + average_sensor_data_[i] * 0.6;
 
                         if(FTSensorDataProcess::s_controlModel == CONTROL_MODE::ACCLERATION)
                         {
@@ -175,7 +194,7 @@ void RobotControl::startHandGuiding()
                     if(!calculateTheoreticalWaypoint())
                     {
                         std::cout<<"calculation error!";
-                        emit signal_handduiding_failed();
+                        emit signal_handduiding_failed("calculation error!");
                     }
                     if(Util::checkForSafe(theoretical_way_point_.jointpos, last_send_joints_, aubo_robot_namespace::ARM_DOF))
                     {
@@ -189,11 +208,11 @@ void RobotControl::startHandGuiding()
                                 wp.jointpos[ks] = last_send_joints_[ks] + K[ks] * (wp.jointpos[ks] - last_send_joints_[ks]);
                                 P[ks] = (1 - K[ks]) * pp[ks];
                             }
-                            last_send_joints_[ks] = wp.jointpos[ks];
+                            last_send_joints_[ks] = wp.jointpos[ks];// the theoretical joint after calman filter;
                         }
                         wayPointVector.push_back(wp);
-//                        std::cout<<theoretical_way_point_.jointpos[0]<<","<<theoretical_way_point_.jointpos[1]<<","<<theoretical_way_point_.jointpos[2]<<","<<theoretical_way_point_.jointpos[3]<<","<<theoretical_way_point_.jointpos[4]<<","<<theoretical_way_point_.jointpos[5]<<","<<
-//                                                                                          last_send_joints_[0]<<","<<last_send_joints_[1]<<","<<last_send_joints_[2]<<","<<last_send_joints_[3]<<","<<last_send_joints_[4]<<","<<last_send_joints_[5];
+                        //                        std::cout<<theoretical_way_point_.jointpos[0]<<","<<theoretical_way_point_.jointpos[1]<<","<<theoretical_way_point_.jointpos[2]<<","<<theoretical_way_point_.jointpos[3]<<","<<theoretical_way_point_.jointpos[4]<<","<<theoretical_way_point_.jointpos[5]<<","<<
+                        //                                                                                          last_send_joints_[0]<<","<<last_send_joints_[1]<<","<<last_send_joints_[2]<<","<<last_send_joints_[3]<<","<<last_send_joints_[4]<<","<<last_send_joints_[5];
                         //update the last state
                         for(int i = 0; i < aubo_robot_namespace::ARM_DOF; i++)
                         {
@@ -207,16 +226,16 @@ void RobotControl::startHandGuiding()
                     else
                     {
                         std::cout<<"robot OverSpeed!";
-                        emit signal_handduiding_failed();
+                        emit signal_handduiding_failed("robot OverSpeed!");
                     }
                 }
                 ret = robotServiceSend.robotServiceSetRobotPosData2Canbus(wayPointVector);    //
-//                for(int i = 0; i < wayPointVector.size(); i++)
-//                    qDebug()<<i<<" "<<wayPointVector[i].jointpos[0]<<","<<wayPointVector[i].jointpos[1]<<","<<wayPointVector[i].jointpos[2]<<","<<wayPointVector[i].jointpos[3]<<","<<wayPointVector[i].jointpos[4]<<","<<wayPointVector[i].jointpos[5];
+                //                for(int i = 0; i < wayPointVector.size(); i++)
+                //                    qDebug()<<i<<" "<<wayPointVector[i].jointpos[0]<<","<<wayPointVector[i].jointpos[1]<<","<<wayPointVector[i].jointpos[2]<<","<<wayPointVector[i].jointpos[3]<<","<<wayPointVector[i].jointpos[4]<<","<<wayPointVector[i].jointpos[5];
                 if(ret != aubo_robot_namespace::InterfaceCallSuccCode)
                 {
                     std::cout<<"Set data error;"<<ret;
-                    emit signal_handduiding_failed();
+                    emit signal_handduiding_failed("TCP2CAN error");
                 }
             }
             else
@@ -267,11 +286,11 @@ bool RobotControl::calculateTheoreticalWaypoint()
         if(!flag)
         {
             std::cout<<"nan"<<last_send_joints_[0]<<","<<last_send_joints_[1]<<","<<last_send_joints_[2]<<","<<last_send_joints_[3]<<","<<last_send_joints_[4]<<","<<last_send_joints_[5]<<","
-                   <<ds[0]<<","<<ds[1]<<","<<ds[2]<<","<<ds[3]<<","<<ds[4]<<","<<ds[5];
+                    <<ds[0]<<","<<ds[1]<<","<<ds[2]<<","<<ds[3]<<","<<ds[4]<<","<<ds[5];
             return false;
         }
 
-//        std::cout<<"dqqq"<<dq[0]<<","<<dq[1]<<","<<dq[2]<<","<<dq[3]<<","<<dq[4]<<","<<dq[5];
+        //        std::cout<<"dqqq"<<dq[0]<<","<<dq[1]<<","<<dq[2]<<","<<dq[3]<<","<<dq[4]<<","<<dq[5];
         for(int i = 0; i < aubo_robot_namespace::ARM_DOF; i++)
         {
             theoretical_way_point_.jointpos[i] = last_send_joints_[i] + dq[i];
@@ -381,12 +400,14 @@ bool RobotControl::calculateTheoreticalWaypoint()
 void RobotControl::setToolProperty()
 {
     userCoord.coordType = aubo_robot_namespace::EndCoordinate;
-    userCoord.toolDesc.toolInEndPosition.x = s_tool_pose[0];
+    userCoord.toolDesc.toolInEndPosition.x = s_tool_pose[0];//s_tool_pose input from ui;
     userCoord.toolDesc.toolInEndPosition.y = s_tool_pose[1];
     userCoord.toolDesc.toolInEndPosition.z = s_tool_pose[2];
     m_toolPosition[0] = userCoord.toolDesc.toolInEndPosition.x;
     m_toolPosition[1] = userCoord.toolDesc.toolInEndPosition.y;
     m_toolPosition[2] = userCoord.toolDesc.toolInEndPosition.z;
+
+    s_tool_pose[5] = -M_PI/2;
 
     double ori[4];
     Util::EulerAngleToQuaternion(new double[3]{s_tool_pose[3],s_tool_pose[4],s_tool_pose[5]}, ori);
@@ -403,19 +424,24 @@ int RobotControl::enterTcp2CANMode(bool flag)
     if(flag)
     {
         // enter Tcp2Canbus Mode
-        ret = robotServiceSend.robotServiceEnterTcp2CanbusMode();
-        if(ret != aubo_robot_namespace::InterfaceCallSuccCode)
-            std::cout<<"Enter TCP2CAN mode failed!";
-        else
+        if(updateRobotStatus())
         {
-            tcp2canMode_ = true;
-            s_start_handguiding = true;
+            ret = robotServiceSend.robotServiceEnterTcp2CanbusMode();
+            if(ret != aubo_robot_namespace::InterfaceCallSuccCode)
+                std::cout<<"Enter TCP2CAN mode failed!";
+            else
+            {
+                tcp2canMode_ = true;
+                s_start_handguiding = true;
+            }
         }
+        else
+            emit signal_handduiding_failed("update robot status failed.");
     }
     else
     {
-//        if(tcp2canMode_)
-            ret = robotServiceSend.robotServiceLeaveTcp2CanbusMode();
+        //        if(tcp2canMode_)
+        ret = robotServiceSend.robotServiceLeaveTcp2CanbusMode();
         s_start_handguiding = false;
     }
     return ret;
@@ -426,25 +452,21 @@ bool RobotControl::ObtainCenterofMass()
     //obtain pose1,2,3
     //move to pose 1,,wait for sensor stable ,,store the joint angle and sensor data;;
     //move to pose 2,,,,,,,
-//    s_tool_pose[3] = 0;
-//    s_tool_pose[4] = 0;
-//    s_tool_pose[5] = -M_PI/2;
-//    setToolProperty();
-//    float pose1_sensordata[SENSOR_DIMENSION] = {-26.6504,23.0249,1.98346,0.781332,0.296835,-2.71919};
-//    float pose2_sensordata[SENSOR_DIMENSION] = {-31.6855,27.5977,1.96821,0.671184,0.170454,-2.71761};
-//    float pose3_sensordata[SENSOR_DIMENSION] = {-31.0513,23.029,4.62102,0.779261,0.189995,-2.7181};
+    //    s_tool_pose[3] = 0;
+    //    s_tool_pose[4] = 0;
+    //    s_tool_pose[5] = -M_PI/2;
+    //    setToolProperty();
+//        float pose1_sensordata[SENSOR_DIMENSION] = {-26.6504,23.0249,1.98346,0.781332,0.296835,-2.71919};
+//        float pose2_sensordata[SENSOR_DIMENSION] = {-31.6855,27.5977,1.96821,0.671184,0.170454,-2.71761};
+//        float pose3_sensordata[SENSOR_DIMENSION] = {-31.0513,23.029,4.62102,0.779261,0.189995,-2.7181};
 
-//    float pose1_jointangle[6] = {-15,15,75,60,50,0};
-//    float pose2_jointangle[6] = {-36,27,95,-27,10,0};
-//    float pose3_jointangle[6] = {-36,21,100,-6,90,0};
+    //    float pose1_jointangle[6] = {-15,15,75,60,50,0};
+    //    float pose2_jointangle[6] = {-36,27,95,-27,10,0};
+    //    float pose3_jointangle[6] = {-36,21,100,-6,90,0};
 
-//    float FTSensorDataProcess::calibrationMessurement_[POSE_NUM][SENSOR_DIMENSION] = {0};
+    //    float FTSensorDataProcess::calibrationMessurement_[POSE_NUM][SENSOR_DIMENSION] = {0};
     double pose_jointangle[POSE_NUM][6] = {0};
-
-    float center_mass[3] = {0};
     float p_k[3] = {0};
-
-
 
     for(int i = 0; i < SENSOR_DIMENSION; i++)
     {
@@ -516,37 +538,19 @@ bool RobotControl::ObtainCenterofMass()
     for(int k = 0; k < 3; k++)
     {
         double pose_jointangle1[6] = {0};
-        double flangetobase[9] = {0};
-        aubo_robot_namespace::wayPoint_S pose_way_point;
-
         for(int m = 0; m < 6; m++)
         {
             pose_jointangle1[m] = pose_jointangle[k][m];
         }
-        int ret = robotServiceReceive.robotServiceRobotFk(pose_jointangle1, 6, pose_way_point);
-        Util::quaternionToOriMatrix(pose_way_point.orientation, flangetobase);
-
-        RMatrix flg_base(3,3);
-        RMatrix sensor_flg(3,3);
-
-        for(int i = 0; i < 3; i++)
-        {
-            for(int j = 0; j < 3; j++)
-            {
-                flg_base.value[i][j] = flangetobase[3*i+j];
-                sensor_flg.value[i][j] = m_toolOrientation[3*i+j];
-            }
-        }
 
         RMatrix pose_sensortobase(3,3);
-        pose_sensortobase = flg_base * sensor_flg;
-
+        pose_sensortobase = toolToBase(pose_jointangle1);
 
         for(int i = 0; i < 3; i++)
         {
             for(int j = 0; j < 3; j++)
             {
-                pose_RR.value[i+3*k][j] = pose_sensortobase.value[j][i];
+                pose_RR.value[i+3*k][j] = pose_sensortobase.value[j][i];//transpose
             }
         }
 
@@ -567,9 +571,9 @@ bool RobotControl::ObtainCenterofMass()
     //FTSensorDataProcess::s_sensor_offset[6] = [fx0,fy0,fz0,mx0,my0,mz0];
     //center_mass[3] = [cx,cy,cz]
 
-//    float FTSensorDataProcess::s_sensor_offset[6] = {0};
+    //    float FTSensorDataProcess::s_sensor_offset[6] = {0};
     float l_l[3] = {0};
-    float tool_mass;
+
     float base_angle_offset[2];
 
     for(int i = 0; i < 3; i++)
@@ -582,12 +586,10 @@ bool RobotControl::ObtainCenterofMass()
     FTSensorDataProcess::s_sensor_offset[4] = p_k[1] - FTSensorDataProcess::s_sensor_offset[2]*center_mass[0] + FTSensorDataProcess::s_sensor_offset[0]*center_mass[2];
     FTSensorDataProcess::s_sensor_offset[5] = p_k[2] - FTSensorDataProcess::s_sensor_offset[0]*center_mass[1] + FTSensorDataProcess::s_sensor_offset[1]*center_mass[0];
 
-    tool_mass = sqrt(l_l[0]*l_l[0] + l_l[1]*l_l[1] + l_l[2]*l_l[2]);
+    tool_mass = sqrt(l_l[0]*l_l[0] + l_l[1]*l_l[1] + l_l[2]*l_l[2]);//the gravity of tool in base;
 
     base_angle_offset[0] = asin(-l_l[1]/tool_mass);//U
     base_angle_offset[1] = atan(-l_l[0]/l_l[2]);//V
-
-    FTSensorDataProcess::sensor_data_calibrated_ = true;
 
     std::cout<<"center of mass"<<center_mass[0]<<","<<center_mass[1]<<","<<center_mass[2];
     std::cout<<"tool_gravity"<<tool_mass;
@@ -604,7 +606,7 @@ int RobotControl::moveToTargetPose(int index)
     for(int i = 0; i < aubo_robot_namespace::ARM_DOF; i++)
     {
         jointMaxAcc.jointPara[i] = 100.0/180.0*M_PI;
-        jointMaxVelc.jointPara[0] = 50.0/180.0*M_PI;
+        jointMaxVelc.jointPara[i] = 50.0/180.0*M_PI;
 
     }
     robotServiceSend.robotServiceSetGlobalMoveJointMaxAcc(jointMaxAcc);
@@ -618,5 +620,99 @@ int RobotControl::moveToTargetPose(int index)
         memcpy(jointAngle, pose3_jointangle, sizeof(double)*aubo_robot_namespace::ARM_DOF);
     for(int i = 0; i < aubo_robot_namespace::ARM_DOF; i++)
         jointAngle[i] = jointAngle[i] / 180 * M_PI;
-    return robotServiceSend.robotServiceJointMove(jointAngle, true);
+    return robotServiceSend.robotServiceJointMove(jointAngle, true);  // Start to move to the selected pose,if success, return 0;
+}
+// subtract gravity of tool;
+
+
+//input current joints ,G of tool in base;
+//output the Component of gravity and torque in sensor coordinate;
+void RobotControl::getGravityOfToolInSensor(double current_joints[])
+{
+    RMatrix current_sensortobase(3,3);
+    RMatrix g_component(3,1);
+    RMatrix g_base(3,1);//[0,0,-1]
+
+    g_base.value[2][0] = -1;
+    current_sensortobase = toolToBase(current_joints);
+    g_component = RMatrix::RTranspose(current_sensortobase)*g_base;
+    for(int i = 0; i < 3; i++)
+    {
+        gravity_component[i] = g_component.value[i][0]*tool_mass;//GX GY GZ MGx MGy MGz IN SENSOR
+    }
+    gravity_component[3] = gravity_component[2]*center_mass[1] - gravity_component[1]*center_mass[2];
+    gravity_component[4] = gravity_component[0]*center_mass[2] - gravity_component[2]*center_mass[0];
+    gravity_component[5] = gravity_component[1]*center_mass[0] - gravity_component[0]*center_mass[1];
+}
+
+//input current joints ;output the ori matrix from sensor to base ;in RMatrix form;
+RMatrix RobotControl::toolToBase(double current_joints[])
+{
+    aubo_robot_namespace::wayPoint_S current_way_point;
+    double current_flangetobase[9] = {0};
+
+//    std::cout<<"center current_joints mass"<<current_joints[0]<<","<<current_joints[1]<<","<<current_joints[2]<<","<<current_joints[3]<<","<<current_joints[4]<<","<<current_joints[5]<<std::endl;
+
+    int ret = robotServiceReceive.robotServiceRobotFk(current_joints, 6, current_way_point);
+    Util::quaternionToOriMatrix(current_way_point.orientation, current_flangetobase);
+
+    RMatrix c_flg_base(3,3);
+    RMatrix c_sensor_flg(3,3);
+
+    for(int i = 0; i < 3; i++)
+    {
+        for(int j = 0; j < 3; j++)
+        {
+            c_flg_base.value[i][j] = current_flangetobase[3*i+j];
+            c_sensor_flg.value[i][j] = m_toolOrientation[3*i+j];
+        }
+    }
+    RMatrix current_sensor_base(3,3);
+    current_sensor_base = c_flg_base * c_sensor_flg;
+
+    return current_sensor_base;
+}
+
+void RobotControl::externalForceOnToolEnd(double current_joints[])
+{
+//    for(int i = 0; i < 6; i++)
+//    {
+//        current_joints[i] = pose1_jointangle[i]*M_PI/180;//GX GY GZ MGx MGy MGz IN SENSOR
+//    }
+
+    memcpy(raw_sensor_data_,  FTSensorDataProcess::s_sensor_data, sizeof(double)*SENSOR_DIMENSION);
+
+    //subtract gravity component(forcr and torque) from sensor data ;
+    getGravityOfToolInSensor(current_joints);
+    //translate to end of tool
+    for(int i = 0; i < SENSOR_DIMENSION; i++)
+    {
+        raw_sensor_data_[i] -= gravity_component[i];
+        if(i < 3)
+            force_of_end_[i] = raw_sensor_data_[i];
+    }
+
+    double toolendtosensor[3] = {0, 0, -0.12};      //sensor in tool coordinate;;same ori;offset z = -0.12
+    force_of_end_[3] = raw_sensor_data_[2]*toolendtosensor[1] - raw_sensor_data_[1]*toolendtosensor[2] + raw_sensor_data_[3];
+    force_of_end_[4] = raw_sensor_data_[0]*toolendtosensor[2] - raw_sensor_data_[2]*toolendtosensor[0] + raw_sensor_data_[4];
+    force_of_end_[5] = raw_sensor_data_[1]*toolendtosensor[0] - raw_sensor_data_[0]*toolendtosensor[1] + raw_sensor_data_[5];
+    //set the threshold value
+    for(int i = 0; i < SENSOR_DIMENSION; i++)
+    {
+        //threshold + max limit
+        if(abs(force_of_end_[i]) < s_threshold[i])
+            force_of_end_[i] = 0;
+        else if (force_of_end_[i] > 0)
+        {
+            force_of_end_[i] -= s_threshold[i];
+            if(force_of_end_[i] > s_limit[i])
+                force_of_end_[i] = s_limit[i];
+        }
+        else
+        {
+            force_of_end_[i] += s_threshold[i];
+            if(force_of_end_[i] < -s_limit[i])
+                force_of_end_[i] = -s_limit[i];
+        }
+    }
 }

@@ -1,5 +1,7 @@
 #include "../include/RobotiqSensor.h"
 
+double RobotiqSensor::s_range[SENSOR_DIMENSION] = {300,300,800,10,10,15};
+
 /**
  * 函数功能: RobotiqSensor构造函数(初始化信息)
  *
@@ -236,3 +238,7 @@ bool RobotiqSensor::FT_Calibration_Z()
     return calibration_state;
 }
 
+void RobotiqSensor::getFTSensorRange(double range[])
+{
+    memcpy(range, s_range, sizeof(double)*SENSOR_DIMENSION);
+}

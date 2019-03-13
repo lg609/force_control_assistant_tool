@@ -20,6 +20,8 @@ public:
 
     virtual bool initialFTSensor() = 0;
 
+    virtual void getFTSensorRange(double range[]) = 0;
+
     virtual bool uninitialFTSensor() = 0;
 
 };

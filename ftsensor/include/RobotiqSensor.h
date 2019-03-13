@@ -40,6 +40,8 @@ public:
 
     bool uninitialFTSensor();
 
+    void getFTSensorRange(double range[]);
+
     void FT_ManualSetZero();
     bool FT_Calibration_X();
     bool FT_Calibration_Y();
@@ -56,5 +58,7 @@ private:
     std::atomic<float> MX;
     std::atomic<float> MY;
     std::atomic<float> MZ;
+
+    static double s_range[SENSOR_DIMENSION];
 };
 #endif // ROBOTIQ_SENSOR

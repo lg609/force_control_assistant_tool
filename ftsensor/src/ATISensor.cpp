@@ -1,8 +1,15 @@
 #include "../include/ATISensor.h"
 
- ATISensor:: ATISensor()
+double ATISensor::s_range[SENSOR_DIMENSION] = {300,300,800,10,10,15};
+
+ ATISensor::ATISensor()
  {
 
+ }
+
+ void ATISensor::getFTSensorRange(double range[])
+ {
+     memcpy(range, s_range, sizeof(double)*SENSOR_DIMENSION);
  }
 
 /* Sleep ms milliseconds */

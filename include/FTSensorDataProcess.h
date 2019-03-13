@@ -68,6 +68,9 @@ public:
     bool querydatabes();
     bool openDatabase(QString name);
     
+signals:
+    void signal_sensor_over_range(QString);
+
 public:
     static double calibrationMessurement_[3][6];
     DataBase *db_;
@@ -80,8 +83,7 @@ public:
     static double s_sensitivity[SENSOR_DIMENSION];
     static double s_damp[SENSOR_DIMENSION];
     static double s_stiffness[SENSOR_DIMENSION];
-    static double s_threshold[SENSOR_DIMENSION];
-    static double s_limit[SENSOR_DIMENSION];
+    //static double s_threshold[SENSOR_DIMENSION];
     static double s_pos[6];
 
     static double s_sensor_data[SENSOR_DIMENSION];

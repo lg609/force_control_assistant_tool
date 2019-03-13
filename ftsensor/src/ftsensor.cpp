@@ -1,5 +1,7 @@
 #include "../include/ftsensor.h"
 
+
+
 FTSensor::FTSensor()
 {
 }

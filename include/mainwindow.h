@@ -144,7 +144,8 @@ private:
     std::map<std::string, int> paraType_;
 
 private slots:
-    void slot_handduiding_failed(const QString str);
+    void slot_handduiding_failed(QString str);
+    void slot_sensor_overrange(QString str);
 
 };
 

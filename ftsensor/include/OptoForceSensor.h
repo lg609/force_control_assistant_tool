@@ -90,9 +90,12 @@ public:
 
     bool uninitialFTSensor();
 
+    void getFTSensorRange(double range[]);
+
 private:
     SOCKET_HANDLE socketHandle;		/* Handle to UDP socket used to communicate with Ethernet DAQ. */
     FTResponse ftResponse;
+    static double s_range[SENSOR_DIMENSION];
 
 };
 #endif // FTSENSOR_H

@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <iostream>
 #include <sstream>
 #include <fstream>
 #include "kinematics.cpp"
@@ -266,16 +267,29 @@ bool Util::tranToQuaternion(double eerot[], aubo_robot_namespace::Ori &ori)
 
 bool Util::getAngleVelocity(const double* ds, double* q, double *dq)
 {
+    bool flag;
     RVector dDis(6), qq(6), dDelta(6);
-    for(int i = 0; i < 6; i++)
-    {
-        dDis.value[i] = ds[i]; //the increment in sensor coordinate
-        qq.value[i] = q[i];
-    }
     RMatrix J(6,6), A(6,6), T(6,6);
-    GetJacobian(J, A, qq);
-    RMatrix AJ = A * J;
-    bool flag = RMatrix::RMatrixInv(AJ, T);
+
+    for(int i = 0; i<1; i++)
+    {
+        for(int i = 0; i < 6; i++)
+        {
+            dDis.value[i] = ds[i];              //the increment in sensor coordinate
+            qq.value[i] = q[i];
+        }
+        GetJacobian(J, A, qq);
+        RMatrix AJ = A * J;
+        flag = RMatrix::RMatrixInv(AJ, T);
+
+//        std::cout<<"1:"<<T.value[0][0]<<","<<T.value[0][1]<<","<<T.value[0][2]<<","<<T.value[0][3]<<","<<T.value[0][4]<<","<<T.value[0][5]<<std::endl;
+//        std::cout<<"2:"<<T.value[1][0]<<","<<T.value[1][1]<<","<<T.value[1][2]<<","<<T.value[1][3]<<","<<T.value[1][4]<<","<<T.value[1][5]<<std::endl;
+//        std::cout<<"3:"<<T.value[2][0]<<","<<T.value[2][1]<<","<<T.value[2][2]<<","<<T.value[2][3]<<","<<T.value[2][4]<<","<<T.value[2][5]<<std::endl;
+//        std::cout<<"4:"<<T.value[3][0]<<","<<T.value[3][1]<<","<<T.value[3][2]<<","<<T.value[3][3]<<","<<T.value[3][4]<<","<<T.value[3][5]<<std::endl;
+//        std::cout<<"5:"<<T.value[4][0]<<","<<T.value[4][1]<<","<<T.value[4][2]<<","<<T.value[4][3]<<","<<T.value[4][4]<<","<<T.value[4][5]<<std::endl;
+//        std::cout<<"6:"<<T.value[5][0]<<","<<T.value[5][1]<<","<<T.value[5][2]<<","<<T.value[5][3]<<","<<T.value[5][4]<<","<<T.value[5][5]<<std::endl;
+//        int a = 10;
+    }
 
     if(flag/*!isnan(dDelta.value[0]) && !isnan(dDelta.value[1]) && !isnan(dDelta.value[2]) && !isnan(dDelta.value[3]) && !isnan(dDelta.value[4]) && !isnan(dDelta.value[5])*/)
     {

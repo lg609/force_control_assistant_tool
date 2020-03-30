@@ -8,17 +8,15 @@ double RobotControl::s_tool_pose[CARTESIAN_FREEDOM] = {0};           //TOOL POSE
 //RigidBodyInertia RobotControl::tool_dynamics;
 double RobotControl::s_threshold[6];
 double RobotControl::s_limit[6];
-double RobotControl::force_of_end_[6];
-double RobotControl::s_pose_calibration[3][6];
+::Wrench RobotControl::force_of_end_;
+//double RobotControl::s_pose_calibration[3][6];
 
-int RobotControl::s_dragMode = 0;
-int RobotControl::s_calculateMethod = 0;
-int RobotControl::s_controlModel = 0;
-int RobotControl::s_controlSpace = 0;
+//int RobotControl::s_dragMode = 0;
+//int RobotControl::s_calculateMethod = 0;
+//int RobotControl::s_controlModel = 0;
+//int RobotControl::s_controlSpace = 0;
 
-int RobotControl::s_bufferSizeLimit = 42;
-int RobotControl::s_filter1 = 0;
-int RobotControl::s_filter2 = 0;
+
 double RobotControl::s_mass[SENSOR_DIMENSION] = {0};
 double RobotControl::s_damp[SENSOR_DIMENSION] = {0};
 double RobotControl::s_stiffness[SENSOR_DIMENSION] = {0};
@@ -35,9 +33,8 @@ float K[6] = {0};
 
 
 RobotControl::RobotControl(const std::string& model):
-    enable_constraints_(false),
     IO_name_("0"),
-    IO_switch_(0.)/*,
+    IO_switch_(true)/*,
     last_send_joints_(CARTESIAN_FREEDOM),
     current_way_point_(CARTESIAN_FREEDOM)*/
 {
@@ -118,8 +115,9 @@ void RobotControl::updateRobotGoal()
 
 void RobotControl::initalControlPara()
 {
-    aral_interface_->setFeedBackOptions(0x03);     // only position and joint current feedback, no velocity and acceleration feedback
     aral_interface_->setControlType(FORCE_ADM_CONTROL);
+    aral_interface_->setFeedBackOptions(0x03);     // only position and joint current feedback, no velocity and acceleration feedback
+    aral_interface_->enableSingularityConsistent(false);
     ft_share_->trackEnable = 1;
 }
 
@@ -133,7 +131,7 @@ void RobotControl::startForceControl()
     initalControlPara();
     while(s_thread_handguiding)
     {
-        if(ft_share_->trackEnable == 1)
+        if(ft_share_->trackEnable == 1 && IO_switch_)
         {
             ft_share_->trackEnable = 0;
             updateRobotStatus();
@@ -146,6 +144,21 @@ void RobotControl::startForceControl()
 
     }
 
+}
+
+void RobotControl::enableConstraints(bool flag)
+{
+    aral_interface_->enableSingularityConsistent(flag);
+}
+
+void RobotControl::setSelectionVector()
+{
+    aral_interface_->setSelectMatrix(selection_vector_);
+}
+
+void RobotControl::setControlPeriod(const double period)
+{
+    aral_interface_->setControlPeriod(period);
 }
 
 void RobotControl::updateControlPara(const double& value, const int& index, const std::string& typeName)
@@ -164,13 +177,11 @@ void RobotControl::updateControlPara(const double& value, const int& index, cons
 //    }
 }
 
-
-
-double RobotControl::getHandGuidingSwitch()
+bool RobotControl::getHandGuidingSwitch()
 {
     if(IO_name_ == "0")
-        return 1;
-    else
+        IO_switch_ = true;
+    else {}
 //        robotServiceReceive.robotServiceGetBoardIOStatus(aubo_robot_namespace::RobotBoardUserDI, IO_name_, IO_switch_);
     return IO_switch_;
 }
@@ -191,8 +202,6 @@ int RobotControl::moveToTargetPose(int index)
 //    s_pose_calibration[index].toDoubleArray(joint);
 //    return robotServiceSend.robotServiceJointMove(joint, true);  // Start to move to the selected pose,if success, return 0;
 }
-// subtract gravity of tool;
-
 
 void RobotControl::getCalibrationPose(int index, double joint_angle[])
 {
@@ -206,20 +215,22 @@ void RobotControl::getCalibrationPose(int index, double joint_angle[])
 
 
 /******** Control Parameter function ********/
-
-
-
-bool RobotControl::obtainCenterofMass(double result[])
+int RobotControl::calibrateFTSensor(FtSensorCalibrationResult &result)
 {
-//    robot_kine_->calibrateToolAndSensor(s_pose_calibration, FTSensorDataProcess::s_calibrationMeasurements, result);
+//    aral_interface_->calibToolAndSensor(s_pose_calibration, FTSensorDataProcess::s_calibrationMeasurements, result);
 }
 
 
 void RobotControl::setToolProperty()
 {
-//    robot_kine_->setToolProperty(Frame(Rotation::RPY(s_tool_pose[3],s_tool_pose[4],s_tool_pose[5]), Vector(s_tool_pose[0], s_tool_pose[1], s_tool_pose[2])));
+    aral_interface_->setToolPose(s_tool_pose[3], s_tool_pose[4], s_tool_pose[5], &s_tool_pose[0]);
 }
 
+
+void RobotControl::setToolDynamics(const RigidBodyInertia &I)
+{
+    aral_interface_->setToolInertial(I.mass, I.com.data, I.inertial);
+}
 
 /******************** Admittance Control ********************/
 void RobotControl::enableAdmittanceControl()
@@ -234,19 +245,65 @@ void RobotControl::disableAdmittanceControl()
     ft_share_->mode = 0;
 }
 
-//void RobotControl::setAdmittanceControlFT(double value, CONTROL_AXIS axis)
-//{
-//    ft_share_->goalWrench[axis] = value;
-//}
+void RobotControl::setAdmittanceControlFT(double value, CONTROL_AXIS axis)
+{
+    selection_vector_[axis] = value;
+}
 
 void RobotControl::updateAdmittancePIDPara(double value, int index)
 {
     ft_share_->pid_motion[index] = value;
 }
 
-void RobotControl::getMaxSigma(double sigmaValue[])
+void RobotControl::setDragMode(unsigned int type)
 {
-//    for(int i = 0; i < SENSOR_DIMENSION; i++)
-//        sigmaValue[i] = s_damp[i]/(s_mass[i]/CONTROL_PERIOD + s_damp[i]);
+    aral_interface_->setDragMode(type);
 }
+
+void RobotControl::setForceControlMode(unsigned int mode)
+{
+    aral_interface_->setForceControlMode(mode);
+}
+
+void RobotControl::setControlSpace(unsigned int value)
+{
+    aral_interface_->setForceControlSpace(value);
+}
+
+void RobotControl::setFilter1(const double value)
+{
+    aral_interface_->setSensorFilter1(value);
+}
+
+void RobotControl::setFilter2(const double value)
+{
+    aral_interface_->setSensorFilter2(value);
+}
+
+void RobotControl::setEndFTSensorThreshold(double data[SENSOR_DIMENSION])
+{
+    aral_interface_->setEndFTSensorThreshold(data);
+}
+
+void RobotControl::setEndFTSensorLimit(double data[SENSOR_DIMENSION])
+{
+    aral_interface_->setEndFTSensorLimit(data);
+}
+
+int RobotControl::setCartStiffness(double data[CARTESIAN_FREEDOM])
+{
+    return aral_interface_->setCartStiffness(data);
+}
+
+int RobotControl::setCartDamp(double data[CARTESIAN_FREEDOM])
+{
+    return aral_interface_->setCartDamp(data);
+}
+
+int RobotControl::setCartMass(double data[CARTESIAN_FREEDOM])
+{
+    return aral_interface_->setCartMass(data);
+}
+
+
 

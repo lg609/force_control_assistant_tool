@@ -41,13 +41,13 @@ typedef struct
     double aDamp[6];
     double aStiffness[6];
     double sensitivity[6];
-    double goalWrench[6];
     double curCurrent[6];
     double curJointPos[6];
     double cmdJointPos[6];
     double cmdCurrent[6];
 }ForceControlData;
 
+#define CONTROL_PERIOD 0.005
 using namespace ARAL;
 
 class RobotControl
@@ -65,75 +65,98 @@ public:
 
     /******** Force Control function ********/
     void startForceControl();
-//    bool getHandGuidingWaypoints(std::vector<aubo_robot_namespace::wayPoint_S> &wayPointVector);
-    inline void closeHandGuidingThread(){s_thread_handguiding = false;}
-    inline void enableConstraints(){enable_constraints_ = true;}    //singularity
-    double getHandGuidingSwitch();
+    //!
+    void enableConstraints(bool flag);    //singularity
+    //!
+    void setSelectionVector();
+    //!
+    void setControlPeriod(const double period);
+    //!
+    bool getHandGuidingSwitch();
+    //!
     inline void setHandGuidingSwitchIO(const std::string& IO_name__){IO_name_ = IO_name__;}
 
     /******** Calibration function ********/
     int moveToTargetPose(int index);
+    //!
     void getCalibrationPose(int index, double joint_angle[]);
 
 
     /******** Control Parameter function ********/
     void initalControlPara();
+    //!
     void updateControlPara(const double& value, const int& index, const std::string& type);
-    bool obtainCenterofMass(double result[]);
+    //!
+    int calibrateFTSensor(FtSensorCalibrationResult &result);
+    //!
     void setToolProperty();
-//    void setToolDynamics(const double I[]){tool_dynamics = I;}
-    double* getToolDynamics(){return tool_dynamics;}
+    //!
+    void setToolDynamics(const RigidBodyInertia &I);
+    //!
+    RigidBodyInertia getToolDynamics(){return tool_dynamics;}
 
     /******************** Admittance Control ********************/
     void enableAdmittanceControl();
+    //!
     void disableAdmittanceControl();
-//    void setAdmittanceControlFT(double value, CONTROL_AXIS axis);
+    //!
+    void setAdmittanceControlFT(double value, CONTROL_AXIS axis);
+    //!
     void updateAdmittancePIDPara(double value, int index);
-    void getMaxSigma(double sigmaValue[]);
+    //!
+    void setDragMode(unsigned int value);
+    //!
+    void setForceControlMode(unsigned int mode);
+    //!
+    void setControlSpace(unsigned int value);
+    //!
+    void setFilter1(const double value);    // value: 0-1
+    //!
+    void setFilter2(const double value);
 
-    inline void setDragMode(int value){s_dragMode = value;}
-    inline void setCalculateMethod(int value){s_calculateMethod = value;}
-    inline void setControlModel(int value){s_controlModel = value;}
-    inline void setControlSpace(int value){s_controlSpace = value;}
-    inline void setControlPeriod(int value){s_control_period = value;}
-    inline void setBufferSizeLimit(int value){s_bufferSizeLimit = value;}
-    inline void setFilter1 (int value){s_filter1 = value;}
-    inline void setFilter2 (int value){s_filter2 = value;}
+    //!
+    void setEndFTSensorThreshold(double data[SENSOR_DIMENSION]);
+    //!
+    void setEndFTSensorLimit(double data[SENSOR_DIMENSION]);
+    //!
+    int setCartStiffness(double data[CARTESIAN_FREEDOM]);
+    //!
+    int setCartDamp(double data[CARTESIAN_FREEDOM]);
+    //!
+    int setCartMass(double data[CARTESIAN_FREEDOM]);
+    //!
+    void setToolPose(double data[SENSOR_DIMENSION])
+    {
+        for(int i = 0; i < SENSOR_DIMENSION; i++)
+            s_tool_pose[i] = data[i];
+    }
+    inline void setCalibrationPose(double data[SENSOR_DIMENSION], int index)
+    {
+        for(int i = 0; i < SENSOR_DIMENSION; i++)
+            s_pose_calibration[index](i) = data[i];
+    }
 
-    inline void setThreshold(double data[SENSOR_DIMENSION]){for(int i = 0; i < SENSOR_DIMENSION; i++) s_threshold[i] = data[i];}
-    inline void setLimit(double data[SENSOR_DIMENSION]){for(int i = 0; i < SENSOR_DIMENSION; i++) s_limit[i] = data[i];}
-    inline void setStiffness(double data[SENSOR_DIMENSION]){for(int i = 0; i < SENSOR_DIMENSION; i++) s_stiffness[i] = data[i];}
-    inline void setDamp(double data[SENSOR_DIMENSION]){for(int i = 0; i < SENSOR_DIMENSION; i++) s_damp[i] = data[i];}
-    inline void setMass(double data[SENSOR_DIMENSION]){for(int i = 0; i < SENSOR_DIMENSION; i++) s_mass[i] = data[i];}
-    inline void setToolPose(double data[SENSOR_DIMENSION]){ for(int i = 0; i < SENSOR_DIMENSION; i++) s_tool_pose[i] = data[i];}
-//    inline void setCalibrationPose(double data[SENSOR_DIMENSION], int index){for(int i = 0; i < SENSOR_DIMENSION; i++) s_pose_calibration[index](i) = data[i];}
-
-//    Kinematics* getRobotKine(){return robot_kine_;}
-    double* getRobotEndWrench(){return force_of_end_;}
+    ::Wrench getRobotEndWrench(){return force_of_end_;}
 
 public:
     static bool s_start_handguiding;
     static bool s_thread_handguiding;
     static double s_threshold[6];
     static double s_limit[6];
-    static double force_of_end_[6];
-    static double tool_dynamics[10];
-    static double s_pose_calibration[CALIBRATION_POS::POSE_Total][6];
+    static ::Wrench force_of_end_;
+    static RigidBodyInertia tool_dynamics;
+    static JointArray s_pose_calibration[CALIBRATION_POS::POSE_Total];
 
     static int s_control_period;
-    static int s_controlSpace;
-    static int s_dragMode;
-    static int s_calculateMethod;
-    static int s_controlModel;
-    static int s_bufferSizeLimit;
-    static int s_filter1;
-    static int s_filter2;
+
     static double s_mass[SENSOR_DIMENSION];
     static double s_damp[SENSOR_DIMENSION];
     static double s_stiffness[SENSOR_DIMENSION];
     static double s_tool_pose[CARTESIAN_FREEDOM];
 
     std::map<std::string, int> paraType_;
+
+    double selection_vector_[CARTESIAN_FREEDOM];
 
 
 private:
@@ -150,9 +173,8 @@ private:
     double last_joint_d_[CARTESIAN_FREEDOM];
     double last_joint_dd_[CARTESIAN_FREEDOM];
 
-    bool enable_constraints_;
     bool orientaion_enable_;
-    double IO_switch_;
+    bool IO_switch_;
     std::string IO_name_;
 
 //    Kinematics *robot_kine_;
@@ -161,6 +183,8 @@ private:
     ForceControlData * ft_share_;
     std::thread* force_control_;
     RLIntface *aral_interface_;
+
+    FtSensorCalibrationResult ft_sensor_calib_res_;
 
     const double joint_max_acc_ = 100.0/180.0*M_PI;
     const double joint_max_velc_ = 50.0/180.0*M_PI;

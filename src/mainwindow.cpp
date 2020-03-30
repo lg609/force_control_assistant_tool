@@ -134,24 +134,24 @@ void HandGuidingForm::updateUI()
     if(calculateMethod == "Jacobian")
     {
         ui->rBJacobian->setChecked(true);
-        robot_control_->setCalculateMethod(0);
+//        robot_control_->setCalculateMethod(0);
     }
     else
     {
         ui->rBIK->setChecked(true);
-        robot_control_->setCalculateMethod(1);
+//        robot_control_->setCalculateMethod(1);
     }
 
     flag = ft_sensor_util_->getFTDBData("base", "controlModel", controlModel);
     if(controlModel == "velocity")
     {
         ui->rBVelocity->setChecked(true);
-        robot_control_->setControlModel(0);
+        robot_control_->setForceControlMode(0);
     }
     else
     {
         ui->rBAcceleration->setChecked(true);
-        robot_control_->setControlModel(1);
+        robot_control_->setForceControlMode(1);
     }
 
     flag = ft_sensor_util_->getFTDBData("base", "controlSpace", controlSpace);
@@ -172,7 +172,7 @@ void HandGuidingForm::updateUI()
 
     flag = ft_sensor_util_->getFTDBData("base", "bufferSizeLimit", bufferSizeLimit);
     ui->lEBuffSizeLimit->setText(bufferSizeLimit);
-    robot_control_->setBufferSizeLimit(bufferSizeLimit.toInt());
+//    robot_control_->setBufferSizeLimit(bufferSizeLimit.toInt());
 
     flag = ft_sensor_util_->getFTDBData("base", "filter1", filter1);
     ui->hSFilter1->setValue(filter1.toInt());
@@ -184,7 +184,7 @@ void HandGuidingForm::updateUI()
 
     double data[6] = {0.0};
     flag = ft_sensor_util_->getFTDBData("parameter", "sensitivity", data);
-    robot_control_->setMass(data);
+    robot_control_->setCartMass(data);
     ui->lESensitivityFx->setText(QString::number(data[0]));
     ui->lESensitivityFy->setText(QString::number(data[1]));
     ui->lESensitivityFz->setText(QString::number(data[2]));
@@ -193,7 +193,7 @@ void HandGuidingForm::updateUI()
     ui->lESensitivityTz->setText(QString::number(data[5]));
 
     flag = ft_sensor_util_->getFTDBData("parameter", "damp", data);
-    robot_control_->setDamp(data);
+    robot_control_->setCartDamp(data);
     ui->lEDampVx->setText(QString::number(data[0]));
     ui->lEDampVy->setText(QString::number(data[1]));
     ui->lEDampVz->setText(QString::number(data[2]));
@@ -202,7 +202,7 @@ void HandGuidingForm::updateUI()
     ui->lEDampWz->setText(QString::number(data[5]));
 
     flag = ft_sensor_util_->getFTDBData("parameter", "stiffness", data);
-    robot_control_->setStiffness(data);
+    robot_control_->setCartStiffness(data);
     ui->lEStiffPosX->setText(QString::number(data[0]));
     ui->lEStiffPosY->setText(QString::number(data[1]));
     ui->lEStiffPosZ->setText(QString::number(data[2]));
@@ -211,7 +211,7 @@ void HandGuidingForm::updateUI()
     ui->lEStiffOriZ->setText(QString::number(data[5]));
 
     flag = ft_sensor_util_->getFTDBData("parameter", "threshold", data);
-    robot_control_->setThreshold(data);
+    robot_control_->setEndFTSensorThreshold(data);
     ui->lEForceXThreshold->setText(QString::number(data[0]));
     ui->lEForceYThreshold->setText(QString::number(data[1]));
     ui->lEForceZThreshold->setText(QString::number(data[2]));
@@ -220,7 +220,7 @@ void HandGuidingForm::updateUI()
     ui->lETorqueZThreshold->setText(QString::number(data[5]));
 
     flag = ft_sensor_util_->getFTDBData("parameter", "limit", data);
-    robot_control_->setLimit(data);
+    robot_control_->setEndFTSensorLimit(data);
     ui->lEForceXLimit->setText(QString::number(data[0]));
     ui->lEForceYLimit->setText(QString::number(data[1]));
     ui->lEForceZLimit->setText(QString::number(data[2]));
@@ -291,7 +291,7 @@ void HandGuidingForm::updateData()
      //scan IO information
     if(ft_sensor_data_process_->getSensorCalibrateStatus())
     {
-        if(robot_control_->getHandGuidingSwitch() == 1)
+        if(robot_control_->getHandGuidingSwitch())
             ui->pBStart->setStyleSheet("background-color:green");
         else
             ui->pBStart->setStyleSheet("background-color:red");
@@ -324,7 +324,7 @@ void HandGuidingForm::updateDataBase(QString arg1, QString table, QString name, 
 
      //???
     double sigmaValue[6];
-    robot_control_->getMaxSigma(sigmaValue);
+//    robot_control_->getMaxSigma(sigmaValue);
     ui->label_Fx_Sigma->setText(QString::number(sigmaValue[0]));
     ui->label_Fy_Sigma->setText(QString::number(sigmaValue[1]));
     ui->label_Fz_Sigma->setText(QString::number(sigmaValue[2]));
@@ -462,11 +462,12 @@ void HandGuidingForm::on_pBCalibration_clicked()
         }
         else
         {
-            if(robot_control_->obtainCenterofMass(result))
+            FtSensorCalibrationResult result;
+            if(robot_control_->calibrateFTSensor(result))
             {
                 bool flag;
                 ::Wrench sensorOffset;
-                memcpy(sensorOffset.data, &result[4], sizeof(double)*SENSOR_DIMENSION);
+                memcpy(sensorOffset.data, &result.offset, sizeof(double)*SENSOR_DIMENSION);
                 ft_sensor_util_->setFTSensorOffsetToDB(sensorOffset);
                 double value[6] = {0.0};
                 flag = ft_sensor_util_->insertFTDBData("parameter","toolProperty", value);
@@ -581,7 +582,8 @@ void HandGuidingForm::on_lE_pos_lambda_textChanged(const QString &arg1)
 
 void HandGuidingForm::on_rBenable_constraints_clicked()
 {
-    robot_control_->enableConstraints();
+    bool flag = ui->rBenable_constraints->isChecked();
+    robot_control_->enableConstraints(flag);
 }
 
 void HandGuidingForm::on_pBStart_clicked()
@@ -669,7 +671,6 @@ void HandGuidingForm::on_lEControlPeriod_textChanged(const QString &arg1)
 void HandGuidingForm::on_lEBuffSizeLimit_textChanged(const QString &arg1)
 {
     ft_sensor_util_->setFTDBData("base", "bufferSizeLimit", arg1);
-    robot_control_->setBufferSizeLimit(arg1.toInt());
 }
 
 

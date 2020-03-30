@@ -1,22 +1,29 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
+//#include <QWidget>
+#include <QPainter>
+#include <QPen>
 #include <QTimer>
+#include <QScreen>
+#include <QPixmap>
+#include <math.h>
+#include <QMainWindow>
+
 #include "FTSensorDataProcess.h"
 #include "robotcontrol.h"
 
 namespace Ui {
-class MainWindow;
+class HandGuidingForm;
 }
 
-class MainWindow : public QMainWindow
+class HandGuidingForm : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow();  
+    explicit HandGuidingForm(QWidget *parent = 0);
+    ~HandGuidingForm();
 
 private slots:
     void on_cBSensorName_currentIndexChanged(int index);
@@ -129,24 +136,80 @@ private slots:
 
     void on_pBRobot_clicked();
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event);  //draw dynamic plot
+    void drawRealtimeData(QFrame *frame);
+
+    void getCalibrationPose(int index);
+
 private:
-    void UIInitial();
-    void deviceInitial();
+    //!
+    void initialUI();
+    //!
+    bool loadRobotModel(const std::string& robotName);
+    //!
+    void initialDevice();
+
+    //!
     void updateUI();
+    //!
     void updateDataBase(QString arg1, QString table, QString name, int index);
+    //! thread to realize handguidng
     void handGuiding();
+    //!
     void displayMessage(const QString str, int timeout = 0);
-    Ui::MainWindow *ui;
+
+private:
+    Ui::HandGuidingForm *ui;
     FTSensorDataProcess *ft_sensor_data_process_;
     RobotControl *robot_control_;
+//    RobotModel *robot_model_;
     std::thread* hand_guiding_;
-    QTimer timer_;
-    std::map<std::string, int> paraType_;
+    QTimer timer_;      //update data flow
+    bool  cBSensorName_add_finished_;
+    const int update_period_ = 200;  //the update period of the timer
+
 
 private slots:
     void slot_handduiding_failed(QString str);
     void slot_sensor_overrange(QString str);
 
+    void on_lE_pos_wcr_textChanged(const QString &arg1);
+    void on_lE_pos_wth_textChanged(const QString &arg1);
+    void on_lE_pos_lambda_textChanged(const QString &arg1);
+    void on_rBenable_constraints_clicked();
+    void on_rBJointSpace_clicked();
+    void on_rBOperateSpace_clicked();
+    void on_cBRealTime_clicked();
+    void on_cB_Enable_FT_Control_clicked();
+    void on_cB_Fx_control_clicked();
+    void on_cB_Fy_control_clicked();
+    void on_cB_Fz_control_clicked();
+    void on_cB_Tx_control_clicked();
+    void on_cB_Ty_control_clicked();
+    void on_cB_Tz_control_clicked();
+    void on_lE_Fx_control_textChanged(const QString &arg1);
+    void on_lE_Fy_control_textChanged(const QString &arg1);
+    void on_lE_Fz_control_textChanged(const QString &arg1);
+    void on_lE_Tx_control_textChanged(const QString &arg1);
+    void on_lE_Ty_control_textChanged(const QString &arg1);
+    void on_lE_Tz_control_textChanged(const QString &arg1);
+    void on_lE_Force_P_Gain_textChanged(const QString &arg1);
+    void on_lE_Force_I_Gain_textChanged(const QString &arg1);
+    void on_lE_Force_D_Gain_textChanged(const QString &arg1);
+    void on_lE_Force_Vmax_Gain_textChanged(const QString &arg1);
+    void on_lE_Force_Amax_Gain_textChanged(const QString &arg1);
+    void on_lE_Torque_P_Gain_textChanged(const QString &arg1);
+    void on_lE_Torque_I_Gain_textChanged(const QString &arg1);
+    void on_lE_Torque_D_Gain_textChanged(const QString &arg1);
+    void on_lE_Torque_Vmax_Gain_textChanged(const QString &arg1);
+    void on_lE_Torque_Amax_Gain_textChanged(const QString &arg1);
+    void on_rBSpecifyTool_clicked();
+    void on_rBSelectTool_clicked();
+    void on_pBScreenShot_clicked();
+    void on_lE_Port_editingFinished();
+    void on_comBHandGuidingSwitchIO_currentTextChanged(const QString &arg1);
+    void on_lE_Robot_IP_editingFinished();
 };
 
-#endif // MAINWINDOW_H
+#endif // HANDGUIDINGFORM_H

@@ -27,6 +27,7 @@ public:
 
 private:
     QSqlDatabase db_;
+    QSqlQuery query_;
     bool IsOpen;
     QString name_;
 };

@@ -1,48 +1,35 @@
 #ifndef FTSENSORDATAPROCESS_H
 #define FTSENSORDATAPROCESS_H
+
 #include <QObject>
 #include <QtSql>
 #include <QSqlDriver>
 #include <QSqlDatabase>
 #include <thread>
-#include <boost/bind.hpp>
 #include <unistd.h>
 #include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/shm.h>
 #include <iostream>
+#include <vector>
 
-#include "../ftsensor/include/ftsensor.h"
-#include "../ftsensor/include/OptoForceSensor.h"
-#include "../ftsensor/include/RobotiqSensor.h"
-#include "../ftsensor/include/ATISensor.h"
+#include "ft_sensor.h"
+#include "kunwei_sensor.h"
 #include "../utility/include/database.h"
 
-enum PARAMATER_TYPE
+//#include "model/frames.hpp"
+//using namespace  AUBO;
+
+enum CALIBRATION_POS
 {
-    SENSITIVITY = 0,
-    DAMP,
-    STIFFNESS,
-    THRESHOLD,
-    LIMIT,
-    POS
-};
-enum CONTROL_MODE
-{
-    VELOCITY = 0,
-    ACCLERATION
+    POSE_X = 0,
+    POSE_Y,
+    POSE_Z,
+    POSE_Total
 };
 
-enum CALCULATE_METHOD
-{
-    JACOBIAN = 0,
-    IK
-};
-
-enum DRAG_MODE
-{
-    POSITION = 0,
-    ORI,
-    POSE
-};
 
 class FTSensorDataProcess:public QObject
 {
@@ -51,44 +38,48 @@ public:
     FTSensorDataProcess();
     ~FTSensorDataProcess();
     
-    void obtainCalibrationPos(int index);
-    void getFTSensorData();
-    bool sensorTypeSelect(QString sensorType);
-    void setFTSensorOffsetToDB();
-    bool getFTSensorOffsetFromDB();
+    //! select sensor
+    bool sensorTypeSelect(std::string sensorType, std::string devName = "");
+    //!
+    inline void setConnectName(std::string connectName){connect_name_ = connectName;}
 
-
+    /******** data base  operation ********/
+    bool openDatabase(QString name);
+    bool getFTSensorOffsetFromDB(double sensorOffset[]);
     bool getFTDBData(QString tableName, QString key, QString &value);
     bool getFTDBData(QString tableName, QString key, double *value);
     bool insertFTDBData(QString tableName, QString key, QString value);
     bool insertFTDBData(QString tableName, QString key, double value[]);
+    void setFTSensorOffsetToDB();
     bool setFTDBData(QString tableName, QString key, QString value);
     bool setFTDBData(QString tableName, QString key, QString value, int id);
     bool createFTDBTable(QString name);
     bool querydatabes();
-    bool openDatabase(QString name);
-    
+
+    /******** display sensor data ********/
+    inline void enableDisplaySenssorData(){display_sensor_data_ = true;}
+    void disableDisplaySenssorData();
+    inline int getPlotDataLength(){return plot_data_length;}
+    int getDisplayDataExtremum(double extremum[], byte flag);
+
+    /******** get sensor data  information********/
+    //! poses for calibration
+    void obtainCalibrationPos(int index);
+    void obtainFTSensorData();
+    inline static double* getSensorData(){return s_sensor_data;}
+    inline bool getSensorCalibrateStatus(){return s_sensor_data_calibrated;}
+    inline void setSensorCalibrateStatus(bool calibrated){s_sensor_data_calibrated = calibrated;}
+
 signals:
     void signal_sensor_over_range(QString);
 
 public:
-    static double calibrationMessurement_[3][6];
     DataBase *db_;
-    static int s_dragMode;
-    static int s_calculateMethod;
-    static int s_controlModel;
-    static int s_bufferSizeLimit;
-    static int s_filter1;
-    static int s_filter2;
-    static double s_sensitivity[SENSOR_DIMENSION];
-    static double s_damp[SENSOR_DIMENSION];
-    static double s_stiffness[SENSOR_DIMENSION];
-    //static double s_threshold[SENSOR_DIMENSION];
-    static double s_pos[6];
-
-    static double s_sensor_data[SENSOR_DIMENSION];
-    static double s_sensor_offset[SENSOR_DIMENSION];
-    static bool sensor_data_calibrated_;
+    static double s_calibrationMeasurements[CALIBRATION_POS::POSE_Total][6];
+    static double s_sensor_data[6];
+    static double s_sensor_offset[6];
+    static bool s_sensor_data_calibrated;
+    std::vector<Wrench> m_sensor_data_display;
 
 private:
     std::thread* read_sensor_data_;
@@ -97,9 +88,16 @@ private:
     bool thread_live_;
 
     FTSensor* ft_sensor_;
-    OptoForceSensor optoforce;       //optoforce
-    RobotiqSensor robotiq;           //robotiq
-    ATISensor ati;           //robotiq
+//    OptoForceSensor optoforce;       //optoforce
+//    RobotiqSensor robotiq;           //robotiq
+//    ATISensor *ati;           //ATI
+    KunWeiSensor *kws;           //KWS
+    std::string connect_name_;
+
+    bool display_sensor_data_;
+    const int plot_data_length = 600;  //the width of the plot area
+    const int control_period_ = 5;  //the width of the plot area
+
 };
 
 #endif // FTSENSORDATAPROCESS_H

@@ -1,4 +1,9 @@
 #include "../include/database.h"
+#include <QDir>
+//#include "common.h"
+#include <limits>
+
+#define MAX_SIZE (PATH_MAX+1)
 
 DataBase::DataBase():IsOpen(false)
 {
@@ -14,17 +19,27 @@ bool DataBase::openDataBase(QString name)
 {
     if(IsOpen)
         db_.close();
+//    QString dbName = QString("%1/Database/%2.db").arg(Common::getCommonHandle()->m_pluginPath).arg(name);
+//    QString dbName = "/root/HandGuidingExample/Database/" + name + ".db";
+
+    QString dbName = "../../Database/" + name + ".db";
+
     if(QSqlDatabase::contains("qt_sql_default_connection"))
       db_ = QSqlDatabase::database("qt_sql_default_connection");
     else
-      db_ = QSqlDatabase::addDatabase("QSQLITE");
+      db_ = QSqlDatabase::addDatabase("QSQLITE", dbName);
 
     db_.setHostName("localhost");
     db_.setUserName("root");
     db_.setPassword("root");
-    db_.setDatabaseName("..//Database//"+name+".db");
+
+    db_.setDatabaseName(dbName);
+    qDebug()<<"Database path:"<<dbName;
+
     name_ = name;
     IsOpen = db_.open();
+    if(!IsOpen)
+        qDebug() <<"Open data base error!";
     return IsOpen;
 }
 
@@ -92,19 +107,21 @@ bool DataBase::updateByKey(QString tableName, QString key, QString value)
 
 bool DataBase::updateByID(QString tableName, QString key, QString value, int id)
 {
-    QSqlQuery query(db_);
+    openDataBase(name_);            //add this to fix the close status by other user
+    query_ = QSqlQuery(db_);
+
+    //qDebug() <<db_.databaseName()<<  "QString(QObject::tr()"<< db_.connectionNames();
     QString name = "v" + QString::number(id);
     QString str = QString("UPDATE %1 SET %2 = \'%3\' WHERE para = \'%4\'").arg(tableName).arg(name).arg(value).arg(key);
 
-    bool success = query.exec(str);
+    bool success = query_.exec(str);
     if(!success)
     {
-        QSqlError lastError = query.lastError();
+        QSqlError lastError = query_.lastError();
         qDebug() << lastError.driverText() << QString(QObject::tr("update fail"));
     }
     return success;
 }
-
 
 bool DataBase::insert(QString tableName, QString key, QString value)
 {

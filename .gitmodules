@@ -1,0 +1,3 @@
+[submodule "RobotLibraryInterface"]
+	path = RobotLibraryInterface
+	url = http://vm1.aubo-robotics.cn:8001/arcs/RobotLibraryInterface.git

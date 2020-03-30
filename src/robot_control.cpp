@@ -1,4 +1,5 @@
-#include "robotcontrol.h"
+#include "robot_control.h"
+#include <stdio.h>
 
 int RobotControl::s_control_period = 5;         //ms      //unit s
 bool RobotControl::s_start_handguiding = false;
@@ -30,22 +31,30 @@ float P[] = {1,1,1,1,1,1};
 float pp[6] = {0};
 float K[6] = {0};
 
-#define ARM_DOF 6
+//#define ARM_DOF 6
 
-RobotControl::RobotControl():tcp2CanMode_(false),enable_constraints_(false),IO_name_("0"),IO_switch_(0.),server_host_ip_("127.0.0.1")
-  /*,last_send_joints_(CARTESIAN_FREEDOM),current_way_point_(CARTESIAN_FREEDOM)*/
+
+RobotControl::RobotControl(const std::string& model):
+    enable_constraints_(false),
+    IO_name_("0"),
+    IO_switch_(0.)/*,
+    last_send_joints_(CARTESIAN_FREEDOM),
+    current_way_point_(CARTESIAN_FREEDOM)*/
 {
+    aral_interface_ = new RLIntface(model);
+    if(initShareMemory())
+    {
+        s_thread_handguiding = true;
+        force_control_ = new std::thread(std::bind(&RobotControl::startForceControl, this));
+    }
+    else
+        std::cout<<"falied to create the shared memory communication!"<<std::endl;
+
 //    s_pose_calibration[0] = s_pose_calibration[1] = s_pose_calibration[2] = JntArray(6);
 //    last_send_joints_.q = last_send_joints_.qdot = last_send_joints_.qdotdot = JntArray(6);
 //    current_way_point_.q = current_way_point_.qdot = current_way_point_.qdotdot = JntArray(6);
 //    robot_kine_ = new Kinematics(robot_model);
-    key_t key;
-    char pathname[30] ;
-    strcpy(pathname,"/") ;
-    key = ftok(pathname,'z');
-    shmid = shmget(key, sizeof(FTSensorData), 0666 | IPC_CREAT);
-    shm = shmat(shmid, (void*)0, 0);
-    ft_share_ = (FTSensorData *)shm;
+
 
 //    paraType_.insert(std::pair<std::string, int>("sensitivity", MASS));
 //    paraType_.insert(std::pair<std::string, int>("damp", DAMP));
@@ -53,12 +62,11 @@ RobotControl::RobotControl():tcp2CanMode_(false),enable_constraints_(false),IO_n
 //    paraType_.insert(std::pair<std::string, int>("threshold", THRESHOLD));
 //    paraType_.insert(std::pair<std::string, int>("limit", LIMIT));
 //    paraType_.insert(std::pair<std::string, int>("pos", POS));
-
-//    initRobotService();
 }
 
 RobotControl::~RobotControl()
 {
+    //clean the share memory function.
     shmctl(shmid, IPC_RMID, NULL) ;
     shmdt(shm);
     if(ft_share_ != NULL)
@@ -66,52 +74,95 @@ RobotControl::~RobotControl()
         delete ft_share_;
         ft_share_ = NULL;
     }
+
+    //clean the force_control_ thread.
+    s_thread_handguiding = false;
+    usleep(10*1000);
+    if(force_control_!= NULL && force_control_->joinable())
+        force_control_->join();
+    if(force_control_ != NULL)
+        delete force_control_;
 }
 
-
- /******** robot service ********/
-
-bool RobotControl::updateRobotStatus()
+bool RobotControl::initShareMemory()
 {
-    /** Get the intial value of theoretical waypoint**/
-//    aubo_robot_namespace::wayPoint_S tmp;
-//    int ret = robotServiceReceive.robotServiceGetCurrentWaypointInfo(tmp);
+    key_t key;
+    char pathname[30] ;
+    strcpy(pathname,"/") ;
+    key = ftok(pathname,'z');
+    if((shmid = shmget(key, sizeof(ForceControlData), 0666 | IPC_CREAT)) < 0)
+    {
+        perror(pathname);
+        return false;
+    }
+    shm = shmat(shmid, (void*)0, 0);
+    ft_share_ = (ForceControlData *)shm;
 
-//    SetToZero(average_sensor_data_);
-//    last_send_joints_.qdot.setToZero();
-//    last_send_joints_.qdotdot.setToZero();
-//    current_way_point_.qdot.setToZero();
-//    current_way_point_.qdotdot.setToZero();
-//    for(int i = 0; i < ARM_DOF; i++)
+    return true;
+}
+
+void RobotControl::updateRobotStatus()
+{
+    JointArray q, qd, qdd;
+    memcpy(q.data, ft_share_->curJointPos, sizeof(double) * ROBOT_DOF);
+    aral_interface_->updatJointStatus(q, qd, qdd);
+    aral_interface_->updateEndFTSensorData(FTSensorDataProcess::getSensorData().data);
+}
+
+void RobotControl::updateRobotGoal()
+{
+    // update reference trajectory
+
+
+}
+
+void RobotControl::initalControlPara()
+{
+    aral_interface_->setFeedBackOptions(0x03);     // only position and joint current feedback, no velocity and acceleration feedback
+    aral_interface_->setControlType(FORCE_ADM_CONTROL);
+    ft_share_->trackEnable = 1;
+}
+
+/******** force control function ********/
+void RobotControl::startForceControl()
+{
+    struct timeval delay;
+    delay.tv_sec = 0;
+    delay.tv_usec = 10 * 1000; // 20 ms
+
+    initalControlPara();
+    while(s_thread_handguiding)
+    {
+        if(ft_share_->trackEnable == 1)
+        {
+            ft_share_->trackEnable = 0;
+            updateRobotStatus();
+            updateRobotGoal();
+        }
+        else
+        {
+            select(0, NULL, NULL, NULL, &delay);
+        }
+
+    }
+
+}
+
+void RobotControl::updateControlPara(const double& value, const int& index, const std::string& typeName)
+{
+
+//    int type = paraType_[typeName];
+//    switch(type)
 //    {
-//        last_send_joints_.q(i) = current_way_point_.q(i) = tmp.jointpos[i];
-//        relative_position_[i] = 0.0;
+//    case THRESHOLD: s_threshold[index] = value;break;
+//    case LIMIT: s_limit[index] = value;break;
+//    case POS: s_tool_pose[index] = value;break;
+//    case MASS:s_mass[index] = value; ft_share_->aMass[index] = value; break;
+//    case DAMP: s_damp[index] = value; ft_share_->aDamp[index] = value; break;
+//    case STIFFNESS: s_stiffness[index] = value; ft_share_->aStiffness[index] = value; break;
+//    case SENSITIVITY:ft_share_->sensitivity[index] = value;break;
 //    }
-
-    //first ensure the right teach mode
-    //set the tool's parameters
-//    robot_kine_->setToolProperty(Frame(Rotation::RPY(s_tool_pose[3],s_tool_pose[4],s_tool_pose[5]), Vector(s_tool_pose[0], s_tool_pose[1], s_tool_pose[2])));
-//    return !(bool)ret;
 }
-
-bool RobotControl::initRobotService()
-{
-    bool flag = false;
-
-
-    return flag;
-}
-
-/******** Hand Guiding function ********/
-void RobotControl::startHandGuiding()
-{
-    QTime current_time;
-    int ret, msec1 = 0, msec2 = 0, addSize, rib_buffer_size_ = 0;
-    double ts;
-
-}
-
-
 
 
 
@@ -124,27 +175,6 @@ double RobotControl::getHandGuidingSwitch()
     return IO_switch_;
 }
 
-int RobotControl::enterTcp2CANMode(bool flag)
-{
-    int ret;
-    if(flag)
-    {
-        // enter Tcp2Canbus Mode
-        if(updateRobotStatus())
-        {
-
-        }
-        else
-            emit signal_handduiding_failed("update robot status failed.");
-    }
-    else
-    {
-        //        if(tcp2CanMode_)
-        s_start_handguiding = false;
-//        SetToZero(force_of_end_);
-    }
-    return ret;
-}
 
 /******** Calibration function ********/
 int RobotControl::moveToTargetPose(int index)
@@ -157,7 +187,7 @@ int RobotControl::moveToTargetPose(int index)
 //    robotServiceSend.robotServiceSetGlobalMoveJointMaxAcc(jointMaxAcc);
 //    robotServiceSend.robotServiceSetGlobalMoveJointMaxVelc(jointMaxVelc);
 
-    double joint[ARM_DOF];
+    double joint[ROBOT_DOF];
 //    s_pose_calibration[index].toDoubleArray(joint);
 //    return robotServiceSend.robotServiceJointMove(joint, true);  // Start to move to the selected pose,if success, return 0;
 }
@@ -176,20 +206,7 @@ void RobotControl::getCalibrationPose(int index, double joint_angle[])
 
 
 /******** Control Parameter function ********/
-void RobotControl::updateControlPara(const double& value, const int& index, const std::string& typeName)
-{
-//    int type = paraType_[typeName];
-//    switch(type)
-//    {
-//    case THRESHOLD: s_threshold[index] = value;break;
-//    case LIMIT: s_limit[index] = value;break;
-//    case POS: s_tool_pose[index] = value;break;
-//    case MASS:s_mass[index] = value; ft_share_->aMass[index] = value; break;
-//    case DAMP: s_damp[index] = value; ft_share_->aDamp[index] = value; break;
-//    case STIFFNESS: s_stiffness[index] = value; ft_share_->aStiffness[index] = value; break;
-//    case SENSITIVITY:ft_share_->sensitivity[index] = value;break;
-//    }
-}
+
 
 
 bool RobotControl::obtainCenterofMass(double result[])
@@ -233,9 +250,3 @@ void RobotControl::getMaxSigma(double sigmaValue[])
 //        sigmaValue[i] = s_damp[i]/(s_mass[i]/CONTROL_PERIOD + s_damp[i]);
 }
 
-void RobotControl::updateFTSensorData()
-{
-    //share memory data
-    for(int i = 0; i < SENSOR_DIMENSION; i++)
-        ft_share_->sensorData[i] = FTSensorDataProcess::getSensorData()[i];
-}

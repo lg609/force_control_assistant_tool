@@ -1,5 +1,5 @@
 #include "sensor_data_process.h"
-using namespace AUBO;
+//using namespace AUBO;
 
 Wrench FTSensorDataProcess::s_sensor_data;
 Wrench FTSensorDataProcess::s_sensor_offset;
@@ -7,7 +7,7 @@ Wrench FTSensorDataProcess::s_calibrationMeasurements[CALIBRATION_POS::POSE_Tota
 
 bool FTSensorDataProcess::s_sensor_data_calibrated = false;
 
-FTSensorDataProcess::FTSensorDataProcess():sensor_data_stable_(false),thread_live_(true),display_sensor_data_(false)
+FTSensorDataProcess::FTSensorDataProcess():sensor_data_stable_(false),thread_live_(true)
 {
     ft_sensor_ = NULL;
     kws = NULL;
@@ -17,7 +17,7 @@ FTSensorDataProcess::FTSensorDataProcess():sensor_data_stable_(false),thread_liv
     sensor_type_.insert(std::pair<std::string, int>("ATI", SENSOR_TYPE::ATI));
     sensor_type_.insert(std::pair<std::string, int>("KunWei", SENSOR_TYPE::KunWei));
 
-//    db_ = new DataBase();
+//
     read_sensor_data_ = new std::thread(std::bind(&FTSensorDataProcess::obtainFTSensorData, this));
     std::cout<<"Start the read sensor thread!"<<std::endl;
 }
@@ -31,8 +31,7 @@ FTSensorDataProcess::~FTSensorDataProcess()
         delete read_sensor_data_;
 //    if(ft_sensor_ != NULL)
 //        delete ft_sensor_;
-//    if(db_ != NULL)
-//        delete db_;
+
 }
 
 bool FTSensorDataProcess::sensorTypeSelect(std::string sensorType, std::string devName)
@@ -78,7 +77,7 @@ bool FTSensorDataProcess::sensorTypeSelect(std::string sensorType, std::string d
     }
 
     sensor_data_stable_ = ft_sensor_->initialFTSensor();
-    m_sensor_data_display.resize(0);
+
 
     return sensor_data_stable_;
 }
@@ -146,84 +145,11 @@ void FTSensorDataProcess::obtainFTSensorData()
             {
                 s_sensor_data[i] = m_ftData[i];
             }
-
-            //handle dispaly data
-            if(display_sensor_data_)
-            {
-                Wrench plotWrench = s_sensor_data;
-                if(m_sensor_data_display.size() > plot_data_length * 1.2)
-                {
-                    m_sensor_data_display.erase(m_sensor_data_display.begin());
-                    std::cout<<"The length of sensor data display vector is too long!"<<std::endl;
-                }
-                m_sensor_data_display.push_back(plotWrench);
-            }
         }
         usleep(1*1000);
     }
 }
 
 
-
-/******** display sensor data ********/
-void FTSensorDataProcess::disableDisplaySenssorData()
-{
-    m_sensor_data_display.resize(0);
-    display_sensor_data_ = false;
-}
-
-int FTSensorDataProcess::getDisplayDataExtremum(double extremum[], byte flag)
-{
-    int N = m_sensor_data_display.size();
-    for(int i = 0; i < N; i++)
-    {
-        //min and max for force
-        if(flag & 0x01)
-        {
-            if(m_sensor_data_display[i][0] < extremum[0])
-                extremum[0] = m_sensor_data_display[i][0];
-            else if(m_sensor_data_display[i][0] > extremum[1])
-                extremum[1] = m_sensor_data_display[i][0];
-        }
-        if(flag & 0x02)
-        {
-            if(m_sensor_data_display[i][1] < extremum[0])
-                extremum[0] = m_sensor_data_display[i][1];
-            else if(m_sensor_data_display[i][1] > extremum[1])
-                extremum[1] = m_sensor_data_display[i][1];
-        }
-        if(flag & 0x04)
-        {
-            if(m_sensor_data_display[i][2] < extremum[0])
-                extremum[0] = m_sensor_data_display[i][2];
-            else if(m_sensor_data_display[i][2] > extremum[1])
-                extremum[1] = m_sensor_data_display[i][2];
-        }
-
-        //min and max for torque
-        if(flag & 0x08)
-        {
-            if(m_sensor_data_display[i][3] < extremum[2])
-                extremum[2] = m_sensor_data_display[i][3];
-            else if(m_sensor_data_display[i][3] > extremum[3])
-                extremum[3] = m_sensor_data_display[i][3];
-        }
-        if(flag & 0x10)
-        {
-            if(m_sensor_data_display[i][4] < extremum[2])
-                extremum[2] = m_sensor_data_display[i][4];
-            else if(m_sensor_data_display[i][4] > extremum[3])
-                extremum[3] = m_sensor_data_display[i][4];
-        }
-        if(flag & 0x20)
-        {
-            if(m_sensor_data_display[i][5] < extremum[2])
-                extremum[2] = m_sensor_data_display[i][5];
-            else if(m_sensor_data_display[i][5] > extremum[3])
-                extremum[3] = m_sensor_data_display[i][5];
-        }
-    }
-    return N;
-}
 
 

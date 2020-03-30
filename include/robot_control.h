@@ -4,17 +4,15 @@
 #include <fstream>
 #include <iostream>
 #include <string.h>
-#include <QTimer>
-#include <QTime>
 #include <unistd.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/shm.h>
 
-#include "FTSensorDataProcess.h"
+#include "sensor_data_process.h"
+#include "rl/robot_interface.hpp"
 
-#define CARTESIAN_FREEDOM 6
 enum DRAG_MODE
 {
     POSITION = 0,
@@ -35,7 +33,7 @@ enum CONTROL_AXIS
 typedef struct
 {
     //share memory data with robot server
-    int trackEnable;
+    int trackEnable;    // flag
     int mode;
     double sigma;
     double pid_motion[10];//6:pid+4:motion(Vmax Amax)
@@ -44,30 +42,34 @@ typedef struct
     double aStiffness[6];
     double sensitivity[6];
     double goalWrench[6];
-    double sensorData[6];
-}FTSensorData;
+    double curCurrent[6];
+    double curJointPos[6];
+    double cmdJointPos[6];
+    double cmdCurrent[6];
+}ForceControlData;
 
+using namespace ARAL;
 
-class RobotControl: public QObject
+class RobotControl
 {
-     Q_OBJECT
 public:
-    explicit RobotControl();
+    explicit RobotControl(const std::string& model);
+    //!
     ~RobotControl();
 
-    /******** robot service ********/
-    bool initRobotService();
-    bool updateRobotStatus();
-    inline void setRobotIP(const std::string& ip){server_host_ip_ = ip;}
+    bool initShareMemory();
+    //!
+    void updateRobotStatus();
+    //!
+    void updateRobotGoal();
 
-    /******** Hand Guiding function ********/
-    void startHandGuiding();
+    /******** Force Control function ********/
+    void startForceControl();
 //    bool getHandGuidingWaypoints(std::vector<aubo_robot_namespace::wayPoint_S> &wayPointVector);
     inline void closeHandGuidingThread(){s_thread_handguiding = false;}
     inline void enableConstraints(){enable_constraints_ = true;}    //singularity
     double getHandGuidingSwitch();
     inline void setHandGuidingSwitchIO(const std::string& IO_name__){IO_name_ = IO_name__;}
-    int enterTcp2CANMode(bool flag);
 
     /******** Calibration function ********/
     int moveToTargetPose(int index);
@@ -75,6 +77,7 @@ public:
 
 
     /******** Control Parameter function ********/
+    void initalControlPara();
     void updateControlPara(const double& value, const int& index, const std::string& type);
     bool obtainCenterofMass(double result[]);
     void setToolProperty();
@@ -87,7 +90,6 @@ public:
 //    void setAdmittanceControlFT(double value, CONTROL_AXIS axis);
     void updateAdmittancePIDPara(double value, int index);
     void getMaxSigma(double sigmaValue[]);
-    void updateFTSensorData();
 
     inline void setDragMode(int value){s_dragMode = value;}
     inline void setCalculateMethod(int value){s_calculateMethod = value;}
@@ -133,8 +135,6 @@ public:
 
     std::map<std::string, int> paraType_;
 
-signals:
-    void signal_handduiding_failed(QString);
 
 private:
     double average_sensor_data_;
@@ -152,18 +152,15 @@ private:
 
     bool enable_constraints_;
     bool orientaion_enable_;
-    bool tcp2CanMode_;
     double IO_switch_;
     std::string IO_name_;
-    std::string server_host_ip_;
-
-//    ServiceInterface robotServiceSend;
-//    ServiceInterface robotServiceReceive;
 
 //    Kinematics *robot_kine_;
     void *shm;
     int shmid;
-    FTSensorData * ft_share_;
+    ForceControlData * ft_share_;
+    std::thread* force_control_;
+    RLIntface *aral_interface_;
 
     const double joint_max_acc_ = 100.0/180.0*M_PI;
     const double joint_max_velc_ = 50.0/180.0*M_PI;

@@ -1,5 +1,5 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef HandGuidingForm_H
+#define HandGuidingForm_H
 
 //#include <QWidget>
 #include <QPainter>
@@ -7,11 +7,13 @@
 #include <QTimer>
 #include <QScreen>
 #include <QPixmap>
-#include <math.h>
 #include <QMainWindow>
+#include <QFrame>
 
-#include "FTSensorDataProcess.h"
-#include "robotcontrol.h"
+#include <math.h>
+#include "sensor_data_process.h"
+#include "ft_sensor_util.h"
+#include "robot_control.h"
 
 namespace Ui {
 class HandGuidingForm;
@@ -23,6 +25,7 @@ class HandGuidingForm : public QWidget
 
 public:
     explicit HandGuidingForm(QWidget *parent = 0);
+    //!
     ~HandGuidingForm();
 
 private slots:
@@ -139,36 +142,29 @@ private slots:
 protected:
     bool eventFilter(QObject *watched, QEvent *event);  //draw dynamic plot
     void drawRealtimeData(QFrame *frame);
-
     void getCalibrationPose(int index);
 
 private:
     //!
     void initialUI();
     //!
-    bool loadRobotModel(const std::string& robotName);
-    //!
     void initialDevice();
-
     //!
     void updateUI();
     //!
     void updateDataBase(QString arg1, QString table, QString name, int index);
-    //! thread to realize handguidng
-    void handGuiding();
     //!
     void displayMessage(const QString str, int timeout = 0);
 
 private:
     Ui::HandGuidingForm *ui;
-    FTSensorDataProcess *ft_sensor_data_process_;
     RobotControl *robot_control_;
-//    RobotModel *robot_model_;
-    std::thread* hand_guiding_;
+    FTSensorDataProcess *ft_sensor_data_process_;
+    FTSensorUtil *ft_sensor_util_;
+
     QTimer timer_;      //update data flow
     bool  cBSensorName_add_finished_;
-    const int update_period_ = 200;  //the update period of the timer
-
+    const int update_period_ = 200;  //ms: the update period of the timer
 
 private slots:
     void slot_handduiding_failed(QString str);
@@ -212,4 +208,4 @@ private slots:
     void on_lE_Robot_IP_editingFinished();
 };
 
-#endif // HANDGUIDINGFORM_H
+#endif // HandGuidingForm_H

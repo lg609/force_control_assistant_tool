@@ -1,26 +1,8 @@
 #include "robot_control.h"
 #include <stdio.h>
+#include <sys/time.h>
 
-int RobotControl::s_control_period = 5;         //ms      //unit s
-bool RobotControl::s_start_handguiding = false;
-bool RobotControl::s_thread_handguiding = true;
-double RobotControl::s_tool_pose[CARTESIAN_FREEDOM] = {0};           //TOOL POSE relative to the robot end
-//RigidBodyInertia RobotControl::tool_dynamics;
-double RobotControl::s_threshold[6];
-double RobotControl::s_limit[6];
-::Wrench RobotControl::force_of_end_;
-//double RobotControl::s_pose_calibration[3][6];
-
-//int RobotControl::s_dragMode = 0;
-//int RobotControl::s_calculateMethod = 0;
-//int RobotControl::s_controlModel = 0;
-//int RobotControl::s_controlSpace = 0;
-
-
-double RobotControl::s_mass[SENSOR_DIMENSION] = {0};
-double RobotControl::s_damp[SENSOR_DIMENSION] = {0};
-double RobotControl::s_stiffness[SENSOR_DIMENSION] = {0};
-
+int RobotControl::count = 0;
 
 float R[SENSOR_DIMENSION] = {0.00241, 0.0023, 0.0077, 0.0090, 0.0020, 0.00241};
 float Q[SENSOR_DIMENSION] = {1e-5,1e-5,1e-5,1e-7,1e-7,1e-7};
@@ -29,56 +11,59 @@ float P[] = {1,1,1,1,1,1};
 float pp[6] = {0};
 float K[6] = {0};
 
-//#define ARM_DOF 6
-
 
 RobotControl::RobotControl(const std::string& model):
     IO_name_("0"),
-    IO_switch_(true)/*,
-    last_send_joints_(CARTESIAN_FREEDOM),
-    current_way_point_(CARTESIAN_FREEDOM)*/
+    IO_switch_(false)
 {
     aral_interface_ = new RLIntface(model);
+
     if(initShareMemory())
     {
-        s_thread_handguiding = true;
+        initalControlPara();
         force_control_ = new std::thread(std::bind(&RobotControl::startForceControl, this));
     }
     else
         std::cout<<"falied to create the shared memory communication!"<<std::endl;
-
-//    s_pose_calibration[0] = s_pose_calibration[1] = s_pose_calibration[2] = JntArray(6);
-//    last_send_joints_.q = last_send_joints_.qdot = last_send_joints_.qdotdot = JntArray(6);
-//    current_way_point_.q = current_way_point_.qdot = current_way_point_.qdotdot = JntArray(6);
-//    robot_kine_ = new Kinematics(robot_model);
-
-
-//    paraType_.insert(std::pair<std::string, int>("sensitivity", MASS));
-//    paraType_.insert(std::pair<std::string, int>("damp", DAMP));
-//    paraType_.insert(std::pair<std::string, int>("stiffness", STIFFNESS));
-//    paraType_.insert(std::pair<std::string, int>("threshold", THRESHOLD));
-//    paraType_.insert(std::pair<std::string, int>("limit", LIMIT));
-//    paraType_.insert(std::pair<std::string, int>("pos", POS));
 }
 
 RobotControl::~RobotControl()
 {
-    //clean the share memory function.
-    shmctl(shmid, IPC_RMID, NULL) ;
-    shmdt(shm);
-    if(ft_share_ != NULL)
-    {
-        delete ft_share_;
-        ft_share_ = NULL;
-    }
-
-    //clean the force_control_ thread.
-    s_thread_handguiding = false;
-    usleep(10*1000);
+    //clean the force_control_ thread. first
+    enable_thread_ = false;
     if(force_control_!= NULL && force_control_->joinable())
         force_control_->join();
     if(force_control_ != NULL)
         delete force_control_;
+
+    //clean the share memory function.  second
+
+    delete aral_interface_;
+    aral_interface_ = NULL;
+
+    shmdt(shm);
+    shmctl(shmid, IPC_RMID, NULL) ;
+}
+
+void RobotControl::createParaTable()
+{
+    para_table_.insert(std::pair<std::string, int>("cart_mass", CART_MASS));
+    para_table_.insert(std::pair<std::string, int>("cart_damp", CART_DAMP));
+    para_table_.insert(std::pair<std::string, int>("cart_stiffness", CART_STIFFNESS));
+    para_table_.insert(std::pair<std::string, int>("tool_pose", TOOL_POSE));
+    para_table_.insert(std::pair<std::string, int>("sensor_pose", SENSOR_POSE));
+    para_table_.insert(std::pair<std::string, int>("joint_mass", JOINT_MASS));
+    para_table_.insert(std::pair<std::string, int>("joint_damp", JOINT_DAMP));
+    para_table_.insert(std::pair<std::string, int>("joint_stiffness", JOINT_STIFFNESS));
+    para_table_.insert(std::pair<std::string, int>("end_ft_threshold", END_FT_THRESHOLD));
+    para_table_.insert(std::pair<std::string, int>("base_ft_threshold", BASE_FT_THRESHOLD));
+    para_table_.insert(std::pair<std::string, int>("joint_ft_threshold", JOINT_FT_THRESHOLD));
+    para_table_.insert(std::pair<std::string, int>("end_ft_limit", END_FT_LIMIT));
+    para_table_.insert(std::pair<std::string, int>("base_ft_limit", BASE_FT_LIMIT));
+    para_table_.insert(std::pair<std::string, int>("joint_ft_limit", JOINT_FT_LIMIT));
+    para_table_.insert(std::pair<std::string, int>("select_vector", SELECT_VECTOR));
+    para_table_.insert(std::pair<std::string, int>("constraint_para", CONSTRAINT_PARA));
+    para_table_.insert(std::pair<std::string, int>("goal_wrench", GOAL_WRENCH));
 }
 
 bool RobotControl::initShareMemory()
@@ -101,16 +86,25 @@ bool RobotControl::initShareMemory()
 void RobotControl::updateRobotStatus()
 {
     JointArray q, qd, qdd;
-    memcpy(q.data, ft_share_->curJointPos, sizeof(double) * ROBOT_DOF);
+    memcpy(q.data(), ft_share_->curJointPos, sizeof(double) * ROBOT_DOF);
     aral_interface_->updatJointStatus(q, qd, qdd);
-    aral_interface_->updateEndFTSensorData(FTSensorDataProcess::getSensorData().data);
+    aral_interface_->updateEndFTSensorData(FTSensorDataProcess::getSensorData().data());
 }
 
 void RobotControl::updateRobotGoal()
 {
     // update reference trajectory
+}
 
+void RobotControl::getRobotOutput()
+{
+    aral_interface_->getJointCommand(ft_share_->curJointPos, ft_share_->curJointVel, ft_share_->curJointAcc);
+    aral_interface_->getRobotEndWrench(force_of_end_.data());
+}
 
+void RobotControl::getRobotEndWrench(double * wrench)
+{
+    aral_interface_->getRobotEndWrench(wrench);
 }
 
 void RobotControl::initalControlPara()
@@ -119,6 +113,16 @@ void RobotControl::initalControlPara()
     aral_interface_->setFeedBackOptions(0x03);     // only position and joint current feedback, no velocity and acceleration feedback
     aral_interface_->enableSingularityConsistent(false);
     ft_share_->trackEnable = 1;
+    cart_mass_.setToZero();
+    cart_damp_.setToZero();
+    cart_stiffness_.setToZero();
+    tool_pose_.setToZero();
+    ft_sensor_pose_.setToZero();
+    selection_vector_.setConstant(1);
+    end_ft_threshold_.setToZero();
+    end_ft_limit_.setConstant(20);  // set as temporary
+    goal_wrench_.setToZero();
+    enable_thread_ = true;
 }
 
 /******** force control function ********/
@@ -126,24 +130,26 @@ void RobotControl::startForceControl()
 {
     struct timeval delay;
     delay.tv_sec = 0;
-    delay.tv_usec = 10 * 1000; // 20 ms
+    delay.tv_usec = 100 * 1000; // 100 ms
 
-    initalControlPara();
-    while(s_thread_handguiding)
+    while(enable_thread_)
     {
         if(ft_share_->trackEnable == 1 && IO_switch_)
         {
             ft_share_->trackEnable = 0;
             updateRobotStatus();
             updateRobotGoal();
+            getRobotOutput();
         }
         else
         {
+            delay.tv_sec = 0;
+            delay.tv_usec = 50; // 50 us
             select(0, NULL, NULL, NULL, &delay);
+//            gettimeofday(&time1, NULL);
+//            printf("count:%d, sec: %d, usec: %d \n", count++, time1.tv_sec, time1.tv_usec);
         }
-
     }
-
 }
 
 void RobotControl::enableConstraints(bool flag)
@@ -151,9 +157,14 @@ void RobotControl::enableConstraints(bool flag)
     aral_interface_->enableSingularityConsistent(flag);
 }
 
-void RobotControl::setSelectionVector()
+void RobotControl::setConstrainPara(const double* value)
 {
-    aral_interface_->setSelectMatrix(selection_vector_);
+    aral_interface_->setConstrainPara(value);
+}
+
+void RobotControl::setSelectionVector(const double * vec)
+{
+    aral_interface_->setSelectMatrix(vec);
 }
 
 void RobotControl::setControlPeriod(const double period)
@@ -163,18 +174,41 @@ void RobotControl::setControlPeriod(const double period)
 
 void RobotControl::updateControlPara(const double& value, const int& index, const std::string& typeName)
 {
+    int type = para_table_[typeName];
+    switch(type)
+    {
+        case END_FT_THRESHOLD: end_ft_threshold_[index] = value;
+                               setEndFTSensorThreshold(end_ft_threshold_.data());
+                               break;
+        case END_FT_LIMIT: end_ft_limit_[index] = value;
+                           setEndFTSensorLimit(end_ft_limit_.data());
+                           break;
+        case TOOL_POSE: tool_pose_[index] = value;
+                        setToolPose(tool_pose_.data());
+                        break;
+        case CART_MASS:cart_mass_[index] = value;
+                       setCartMass(cart_mass_.data());
+                       break;
+        case CART_DAMP: cart_damp_[index] = value;
+                        setCartDamp(cart_damp_.data());
+                        break;
+        case CART_STIFFNESS:cart_stiffness_[index] = value;
+                            setCartStiffness(cart_stiffness_.data());
+                            break;
+        case SENSOR_POSE:ft_sensor_pose_[index] = value;
+                         setFTSensorPose(ft_sensor_pose_.data());
+                         break;
+        case SELECT_VECTOR:selection_vector_[index] = value;
+                           setSelectionVector(selection_vector_.data());
+                           break;
+        case CONSTRAINT_PARA:constraint_para_[index] = value;
+                             setConstrainPara(constraint_para_.data());
+                             break;
+        case GOAL_WRENCH:goal_wrench_[index] = value;
+                         setGoalWrench(goal_wrench_.data());
+                         break;
 
-//    int type = paraType_[typeName];
-//    switch(type)
-//    {
-//    case THRESHOLD: s_threshold[index] = value;break;
-//    case LIMIT: s_limit[index] = value;break;
-//    case POS: s_tool_pose[index] = value;break;
-//    case MASS:s_mass[index] = value; ft_share_->aMass[index] = value; break;
-//    case DAMP: s_damp[index] = value; ft_share_->aDamp[index] = value; break;
-//    case STIFFNESS: s_stiffness[index] = value; ft_share_->aStiffness[index] = value; break;
-//    case SENSITIVITY:ft_share_->sensitivity[index] = value;break;
-//    }
+    }
 }
 
 bool RobotControl::getHandGuidingSwitch()
@@ -186,9 +220,18 @@ bool RobotControl::getHandGuidingSwitch()
     return IO_switch_;
 }
 
+void RobotControl::setMaxTranSpeed(double vel)
+{
+    aral_interface_->setMaxTranSpeed(vel);
+}
+
+void RobotControl::setMaxRotSpeed(double rot)
+{
+    aral_interface_->setMaxRotSpeed(rot);
+}
 
 /******** Calibration function ********/
-int RobotControl::moveToTargetPose(int index)
+int RobotControl::moveToTargetPose(int /*index*/)
 {
     //move to target pose
 //    robotServiceSend.robotServiceInitGlobalMoveProfile();
@@ -198,12 +241,13 @@ int RobotControl::moveToTargetPose(int index)
 //    robotServiceSend.robotServiceSetGlobalMoveJointMaxAcc(jointMaxAcc);
 //    robotServiceSend.robotServiceSetGlobalMoveJointMaxVelc(jointMaxVelc);
 
-    double joint[ROBOT_DOF];
+//    double joint[ROBOT_DOF];
 //    s_pose_calibration[index].toDoubleArray(joint);
 //    return robotServiceSend.robotServiceJointMove(joint, true);  // Start to move to the selected pose,if success, return 0;
+    return 0;
 }
 
-void RobotControl::getCalibrationPose(int index, double joint_angle[])
+void RobotControl::getCalibrationPose(int /*index*/, double* /*joint_angle[]*/)
 {
     //move to target pose
 //    aubo_robot_namespace::wayPoint_S wayPoint;
@@ -213,41 +257,29 @@ void RobotControl::getCalibrationPose(int index, double joint_angle[])
 //    memcpy(joint_angle, wayPoint.jointpos, sizeof(double)*ARM_DOF);
 }
 
-
-/******** Control Parameter function ********/
 int RobotControl::calibrateFTSensor(FtSensorCalibrationResult &result)
 {
-//    aral_interface_->calibToolAndSensor(s_pose_calibration, FTSensorDataProcess::s_calibrationMeasurements, result);
+    return aral_interface_->calibToolAndSensor(calibration_poses_, FTSensorDataProcess::s_calibrationMeasurements, result);
 }
 
+/******** Control Parameter function ********/
 
-void RobotControl::setToolProperty()
+void RobotControl::setToolDynamicsFromFTSensor(const RigidBodyInertia &I)
 {
-    aral_interface_->setToolPose(s_tool_pose[3], s_tool_pose[4], s_tool_pose[5], &s_tool_pose[0]);
-}
-
-
-void RobotControl::setToolDynamics(const RigidBodyInertia &I)
-{
-    aral_interface_->setToolInertial(I.mass, I.com.data, I.inertial);
+    aral_interface_->setToolInertialFromFTSensor(I.mass, I.com.data(), I.inertial);
 }
 
 /******************** Admittance Control ********************/
 void RobotControl::enableAdmittanceControl()
 {
-    ft_share_->trackEnable = true;
+//    ft_share_->trackEnable = true;
     ft_share_->mode = 1;
 }
 
 void RobotControl::disableAdmittanceControl()
 {
-    ft_share_->trackEnable = false;
+//    ft_share_->trackEnable = false;
     ft_share_->mode = 0;
-}
-
-void RobotControl::setAdmittanceControlFT(double value, CONTROL_AXIS axis)
-{
-    selection_vector_[axis] = value;
 }
 
 void RobotControl::updateAdmittancePIDPara(double value, int index)
@@ -263,6 +295,16 @@ void RobotControl::setDragMode(unsigned int type)
 void RobotControl::setForceControlMode(unsigned int mode)
 {
     aral_interface_->setForceControlMode(mode);
+}
+
+void RobotControl::setThreadMode(unsigned int mode)
+{
+    aral_interface_->setCalThread(mode);
+}
+
+void RobotControl::setCalMethod(unsigned int type)
+{
+    aral_interface_->setCalMethod(type);
 }
 
 void RobotControl::setControlSpace(unsigned int value)
@@ -304,6 +346,28 @@ int RobotControl::setCartMass(double data[CARTESIAN_FREEDOM])
 {
     return aral_interface_->setCartMass(data);
 }
+
+void RobotControl::setOverEstimatedDis(const double dis)
+{
+    aral_interface_->setOverEstimatedDis(dis);
+}
+
+void RobotControl::setGoalWrench(const double* wrench)
+{
+    aral_interface_->setGoalWrench(wrench);
+}
+
+
+void RobotControl::setToolPose(double data[SENSOR_DIMENSION])
+{
+    aral_interface_->setToolPose(data, POS_RPY);
+}
+
+void RobotControl::setFTSensorPose(double data[SENSOR_DIMENSION])
+{
+    aral_interface_->setEndSensorPose(data, POS_RPY);
+}
+
 
 
 

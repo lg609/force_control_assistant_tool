@@ -72,11 +72,11 @@ bool FTSensorDataProcess::sensorTypeSelect(std::string sensorType, std::string d
         }
         if(devName == "")
             devName = "ttyUSB0";
-        kws = new KunWeiSensor(devName);
-        ft_sensor_ = (KunWeiSensor*)kws;
+//        kws = new KunWeiSensor(devName);
+//        ft_sensor_ = (KunWeiSensor*)kws;
     }
 
-    sensor_data_stable_ = ft_sensor_->initialFTSensor();
+//    sensor_data_stable_ = ft_sensor_->initialFTSensor();
 
 
     return sensor_data_stable_;

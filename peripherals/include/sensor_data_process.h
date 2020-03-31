@@ -14,6 +14,9 @@
 
 #include "ft_sensor.h"
 #include "kunwei_sensor.h"
+#include "rl/robot_interface.hpp"
+
+using namespace ARAL;
 
 enum CALIBRATION_POS
 {

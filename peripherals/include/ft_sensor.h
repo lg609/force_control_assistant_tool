@@ -14,23 +14,6 @@ enum SENSOR_TYPE
     KunWei
 };
 
-typedef struct _wrench
-{
-    double data[6];
-    double& operator()(int i){return data[i];}
-    double operator()(int i)const{return data[i];}
-    double& operator[](int i){return data[i];}
-    double operator[](int i)const{return data[i];}
-    struct _wrench operator+(const struct _wrench & lhs)
-    {
-        struct _wrench tmp;
-        for(int i = 0; i < 6; i++)
-        tmp.data[i] = lhs.data[i] + (*this)[i];
-
-        return tmp;
-    }
-}Wrench;
-
 class FTSensor
 {
 public:

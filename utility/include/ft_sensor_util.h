@@ -3,8 +3,12 @@
 
 #include "database.h"
 #include "ft_sensor.h"
+#include "rl/robot_interface.hpp"
 
 #include <string>
+
+using namespace ARAL;
+
 
 class FTSensorUtil
 {

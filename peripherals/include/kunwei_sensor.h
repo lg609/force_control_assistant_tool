@@ -61,7 +61,7 @@ public:
     //!
     bool readConfig();
     //!
-    virtual bool getCalibStauts(){}
+//    virtual bool getCalibStauts(){}
 
 private:
     #ifdef NEW_KUNWEI_SENSOR
@@ -89,6 +89,6 @@ private:
     std::thread read_sensor_data_;
 };
 
-static void data2force(char* data, float* Force);
+void data2force(char* data, float* Force);
 
 #endif // KUNWEISENSOR_H

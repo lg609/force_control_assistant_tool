@@ -51,17 +51,11 @@ private slots:
 
     void on_rBIK_clicked();
 
-    void on_rBVelocity_clicked();
-
-    void on_rBAcceleration_clicked();
-
     void on_hSFilter1_valueChanged(int value);
 
     void on_hSFilter2_valueChanged(int value);
 
     void on_lEControlPeriod_textChanged(const QString &arg1);
-
-    void on_lEBuffSizeLimit_textChanged(const QString &arg1);
 
     void on_lESensitivityFz_textChanged(const QString &arg1);
 
@@ -206,6 +200,18 @@ private slots:
     void on_lE_Port_editingFinished();
     void on_comBHandGuidingSwitchIO_currentTextChanged(const QString &arg1);
     void on_lE_Robot_IP_editingFinished();
+    void on_lEPosX_2_textChanged(const QString &arg1);
+    void on_lEPosY_2_textChanged(const QString &arg1);
+    void on_lEPosZ_2_textChanged(const QString &arg1);
+    void on_lEPosRX_2_textChanged(const QString &arg1);
+    void on_lEPosRY_2_textChanged(const QString &arg1);
+    void on_lEPosRZ_2_textChanged(const QString &arg1);
+    void on_lE_ori_wcr_textChanged(const QString &arg1);
+    void on_lE_ori_wth_textChanged(const QString &arg1);
+    void on_lE_ori_lambda_textChanged(const QString &arg1);
+    void on_rBSerial_clicked();
+    void on_rBParallel_clicked();
+    void on_lEOverEstimateDis_textChanged(const QString &arg1);
 };
 
 #endif // HandGuidingForm_H

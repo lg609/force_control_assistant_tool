@@ -14,7 +14,7 @@
 
 #include "ft_sensor.h"
 #include "kunwei_sensor.h"
-#include "rl/robot_interface.hpp"
+#include "rl_interface/robot_interface.hpp"
 
 using namespace ARAL;
 

@@ -12,7 +12,7 @@
 #include <mutex>          // std::mutex
 
 #include "sensor_data_process.h"
-#include "rl/robot_interface.hpp"
+#include "rl_interface/robot_interface.hpp"
 
 enum DRAG_MODE
 {

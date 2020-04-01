@@ -14,12 +14,12 @@ DESTDIR += ./bin
 unix{
     #32bit system
     contains(QT_ARCH, i386){
-
+#        LIBS += -L$$PWD/lib/lib64/ -lauborobotcontroller
+        LIBS += ../aral_export/lib64/libaubo_robotics.a
     }
     #64bit system
     contains(QT_ARCH, x86_64){
-#        LIBS += -L$$PWD/lib/lib64/ -lauborobotcontroller
-        LIBS += /home/lg/Projects/AUBO_ROBOTICS/lib/lib64/libaubo_robotics.a
+        LIBS += $$PWD/../aral_export/lib64/libaubo_robotics.a
     }
 }
 LIBS += -lpthread
@@ -30,7 +30,7 @@ INCLUDEPATH += $$PWD/include
 INCLUDEPATH += $$PWD/peripherals/include/
 INCLUDEPATH += $$PWD/utility/include/
 
-INCLUDEPATH += /home/lg/Projects/AUBO_ROBOTICS/aubo_robotics/interface/include/
+INCLUDEPATH += ../aral_export/include/
 
 
 HEADERS  += $$PWD/include/mainwindow.h \

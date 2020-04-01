@@ -3,7 +3,7 @@
 
 #include "database.h"
 #include "ft_sensor.h"
-#include "rl/robot_interface.hpp"
+#include "rl_interface/robot_interface.hpp"
 
 #include <string>
 

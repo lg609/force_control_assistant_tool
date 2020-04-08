@@ -12,7 +12,7 @@ SOURCES += \
     $$PWD/src/ft_sensor.cpp \
     $$PWD/src/kunwei_sensor.cpp \
     $$PWD/src/sensor_data_process.cpp \
-#    $$PWD/src/serial_port.cpp \
+    $$PWD/src/serial_port.cpp \
 #    $$PWD/src/optoforce_sensor.cpp \
 #    $$PWD/src/robotiq_sensor.cpp \
 #    $$PWD/src/ati_sensor.cpp \

@@ -52,21 +52,6 @@ enum PARA_TYPE
     GOAL_WRENCH,
 };
 
-typedef struct
-{
-    //share memory data with robot server
-    int trackEnable;    // flag
-    int mode;
-    double sigma;
-    double pid_motion[10];//6:pid+4:motion(Vmax Amax)
-    double curCurrent[6];
-    double curJointPos[6];
-    double curJointVel[6];
-    double curJointAcc[6];
-    double cmdJointPos[6];
-    double cmdCurrent[6];
-}ForceControlData;
-
 using namespace ARAL;
 
 class RobotControl

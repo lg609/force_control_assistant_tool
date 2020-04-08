@@ -59,6 +59,7 @@ KunWeiSensor::~KunWeiSensor()
 #endif
 }
 
+#ifdef NEW_KUNWEI_SENSOR
 static void* kwr_recv_handler(void* arg)
 {
     KunWeiResponse *dev = (KunWeiResponse *)arg;
@@ -150,11 +151,11 @@ static void* kwr_recv_handler(void* arg)
 
     return (void*)0;
 }
-
+#endif
 
 bool KunWeiSensor::initialFTSensor()
 {
-    #ifndef NEW_KUNWEI_SENSOR
+#ifndef NEW_KUNWEI_SENSOR
     if(!readConfig())
         return false;
 
@@ -167,7 +168,7 @@ bool KunWeiSensor::initialFTSensor()
         writeCommand(CLEAR);
         writeCommand(INIT);
         sensor_running_ = true;
-        read_sensor_data_ = std::thread(&KunWeiSensor::handleSensorData, this);
+        read_sensor_data_ = std::thread(&KunWeiSensor::handleSensorData2, this);
         if (!read_sensor_data_.joinable())
         {
             std::cout<<"ERROR; return code from pthread_create() is"<<std::endl;
@@ -338,7 +339,7 @@ void KunWeiSensor::handleSensorData2()
 {
     unsigned char m_rec_data[REC_DATA_LEN];
     int control_period_ = 3;
-//    int data_size;
+    int data_size;
 
     while(sensor_running_)
     {
@@ -347,7 +348,7 @@ void KunWeiSensor::handleSensorData2()
         int t1 = tb.millitm;
         setbuf(stdin,NULL); //设置缓冲区
         writeCommand(REQUEST_MODE);
-        int data_size = readSensor(m_rec_data);
+        data_size = readSensor(m_rec_data);
         int index = 0;
 
         if(data_size >= 12)
@@ -617,6 +618,5 @@ void data2force(char* data, float* Force)
     }
     Force[5] = (int)DataTemp * (float)0.000390625;
 }
-
 
 #endif

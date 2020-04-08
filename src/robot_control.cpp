@@ -85,9 +85,9 @@ bool RobotControl::initShareMemory()
 
 void RobotControl::updateRobotStatus()
 {
-    JointArray q, qd, qdd;
-    memcpy(q.data(), ft_share_->curJointPos, sizeof(double) * ROBOT_DOF);
-    aral_interface_->updatJointStatus(q, qd, qdd);
+    double q[ROBOT_DOF], qd[ROBOT_DOF], qdd[ROBOT_DOF];
+    memcpy(q, ft_share_->curJointPos, sizeof(double) * ROBOT_DOF);
+    aral_interface_->updatJointPVAStatus(q, qd, qdd);
     aral_interface_->updateEndFTSensorData(FTSensorDataProcess::getSensorData().data());
 }
 
@@ -284,7 +284,7 @@ void RobotControl::disableAdmittanceControl()
 
 void RobotControl::updateAdmittancePIDPara(double value, int index)
 {
-    ft_share_->pid_motion[index] = value;
+//    ft_share_->pid_motion[index] = value;
 }
 
 void RobotControl::setDragMode(unsigned int type)

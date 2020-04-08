@@ -30,7 +30,6 @@ typedef int SOCKET_HANDLE;
 typedef struct KunWeiResponseStruct
 {
     int fd;
-//    uint32 rdt_sequence;
     uint32 ft_sequence;
     uint32 status;
     float FTData[6];
@@ -41,7 +40,7 @@ typedef struct KunWeiResponseStruct
 } KunWeiResponse;
 
 
-#define NEW_KUNWEI_SENSOR
+//#define NEW_KUNWEI_SENSOR
 
 class KunWeiSensor: public FTSensor
 {
@@ -61,14 +60,15 @@ public:
     //!
     bool readConfig();
     //!
-//    virtual bool getCalibStauts(){}
+    virtual bool getCalibStauts(){}
 
 private:
-    #ifdef NEW_KUNWEI_SENSOR
+#ifdef NEW_KUNWEI_SENSOR
     typedef void* KWRHandle;
     int kwr_read_continous_request();
     int kwr_ft_zero();
     KunWeiResponse *dev;
+    void data2force(char* data, float* Force);
 #else
     int writeCommand(SENSOR_COMMAND command);
     int readSensor(unsigned char m_rec_data[]);
@@ -89,6 +89,5 @@ private:
     std::thread read_sensor_data_;
 };
 
-void data2force(char* data, float* Force);
 
 #endif // KUNWEISENSOR_H

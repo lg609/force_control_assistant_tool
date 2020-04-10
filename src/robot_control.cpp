@@ -11,6 +11,7 @@ float P[] = {1,1,1,1,1,1};
 float pp[6] = {0};
 float K[6] = {0};
 
+using namespace ARAL;
 
 RobotControl::RobotControl(const std::string& model):
     IO_name_("0"),

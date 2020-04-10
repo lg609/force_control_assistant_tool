@@ -15,7 +15,7 @@ unix{
     #32bit system
     contains(QT_ARCH, i386){
 #        LIBS += -L$$PWD/lib/lib64/ -lauborobotcontroller
-        LIBS += ../aral_export/lib64/libaubo_robotics.a
+        LIBS += $$PWD/../aral_export/lib32/libaubo_robotics.a
     }
     #64bit system
     contains(QT_ARCH, x86_64){
@@ -30,7 +30,7 @@ INCLUDEPATH += $$PWD/include
 INCLUDEPATH += $$PWD/peripherals/include/
 INCLUDEPATH += $$PWD/utility/include/
 
-INCLUDEPATH += ../aral_export/include/
+INCLUDEPATH += $$PWD/../aral_export/include/
 
 
 HEADERS  += $$PWD/include/mainwindow.h \

@@ -11,7 +11,8 @@ QMAKE_CXXFLAGS += -std=c++11
 DESTDIR += ./bin
 
 #********linking library **********************************
-unix{
+unix:
+{
     #32bit system
     contains(QT_ARCH, i386){
 #        LIBS += -L$$PWD/lib/lib64/ -lauborobotcontroller
@@ -19,9 +20,9 @@ unix{
     }
     #64bit system
     contains(QT_ARCH, x86_64){
-        LIBS += $$PWD/../aral_export/lib64/libaubo_robotics.a
     }
 }
+LIBS += $$PWD/../aral_export/lib64/libaubo_robotics.a
 LIBS += -lpthread
 
 include(./peripherals/peripherals.pri)

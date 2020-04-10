@@ -28,11 +28,6 @@ KunWeiSensor::KunWeiSensor(std::string port_name)
     memset(&ftResponse, 0, sizeof(KunWeiResponse));
 #else
     dev = (KunWeiResponse *)malloc(sizeof(KunWeiResponse));
-    dev->fd = open(port_name_.c_str(), O_RDWR | O_NOCTTY |O_NONBLOCK);
-    if(dev->fd < 0)
-    {
-        fprintf(stderr, "Open serial port %s failed!\n", port_name_.c_str());
-    }
 #endif
 }
 
@@ -87,7 +82,7 @@ static void* kwr_recv_handler(void* arg)
             return NULL;
         }
         int nRet = FD_ISSET(dev->fd, &readset);
-        if (nRet) {
+        if (/*nRet == 0*/1) {
             len = read(dev->fd, readdata, 150);
         }
 
@@ -188,6 +183,13 @@ bool KunWeiSensor::initialFTSensor()
 
     return ret;
 #else
+
+    dev->fd = open(port_name_.c_str(), O_RDWR | O_NOCTTY |O_NONBLOCK);
+    if(dev->fd < 0)
+    {
+        fprintf(stderr, "Open serial port %s failed!\n", port_name_.c_str());
+        return false;
+    }
     struct termios OnesensorTermios_old;
     struct termios OnesensorTermios;
 
@@ -209,7 +211,9 @@ bool KunWeiSensor::initialFTSensor()
 
     dev->force_available = 0;
     dev->running = 1;
+    kwr_read_continous_request();
     pthread_create(&dev->tid, 0, kwr_recv_handler, dev);
+    return true;
 #endif
 
 }

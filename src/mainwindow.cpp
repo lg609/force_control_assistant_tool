@@ -165,9 +165,9 @@ void HandGuidingForm::updateUI()
         robot_control_->setControlSpace(1);
     }
 
-    flag = ft_sensor_util_->getFTDBData("base", "controlPeriod", controlPeriod);
-    ui->lEControlPeriod->setText(controlPeriod);
-    robot_control_->setControlPeriod(controlPeriod.toDouble());
+//    flag = ft_sensor_util_->getFTDBData("base", "controlPeriod", controlPeriod);
+//  ui->lEControlPeriod->setText(controlPeriod);
+    //robot_control_->setControlPeriod(controlPeriod.toDouble());
 
     flag = ft_sensor_util_->getFTDBData("base", "over_estimate_dis", overEstimateDis);
     ui->lEOverEstimateDis->setText(overEstimateDis);
@@ -690,7 +690,7 @@ void HandGuidingForm::on_rBOperateSpace_clicked()
 void HandGuidingForm::on_lEControlPeriod_textChanged(const QString &arg1)
 {
     ft_sensor_util_->setFTDBData("base", "controlPeriod", arg1);
-    robot_control_->setControlPeriod(arg1.toDouble());
+//    robot_control_->setControlPeriod(arg1.toDouble());
 }
 
 /******************** RealTime Data ********************/
@@ -871,12 +871,12 @@ void HandGuidingForm::on_cB_Fx_control_clicked()
     if(ui->cB_Fx_control->checkState() == Qt::Checked)
     {
         ui->lE_Fx_control->setEnabled(true);
-        updateDataBase("0", "parameter", "select_vector", 1);
+        updateDataBase("1", "parameter", "select_vector", 1);
     }
     else
     {
         ui->lE_Fx_control->setEnabled(false);
-        updateDataBase("1", "parameter", "select_vector", 1);
+        updateDataBase("0", "parameter", "select_vector", 1);
     }
 
 }
@@ -886,12 +886,12 @@ void HandGuidingForm::on_cB_Fy_control_clicked()
     if(ui->cB_Fy_control->checkState() == Qt::Checked)
     {
         ui->lE_Fy_control->setEnabled(true);
-        updateDataBase("0", "parameter", "select_vector", 2);
+        updateDataBase("1", "parameter", "select_vector", 2);
     }
     else
     {
         ui->lE_Fy_control->setEnabled(false);
-        updateDataBase("1", "parameter", "select_vector", 2);
+        updateDataBase("0", "parameter", "select_vector", 2);
     }
 }
 
@@ -900,12 +900,12 @@ void HandGuidingForm::on_cB_Fz_control_clicked()
     if(ui->cB_Fz_control->checkState() == Qt::Checked)
     {
         ui->lE_Fz_control->setEnabled(true);
-        updateDataBase("0", "parameter", "select_vector", 3);
+        updateDataBase("1", "parameter", "select_vector", 3);
     }
     else
     {
         ui->lE_Fz_control->setEnabled(false);
-        updateDataBase("1", "parameter", "select_vector", 3);
+        updateDataBase("0", "parameter", "select_vector", 3);
     }
 }
 
@@ -914,12 +914,12 @@ void HandGuidingForm::on_cB_Tx_control_clicked()
     if(ui->cB_Tx_control->checkState() == Qt::Checked)
     {
         ui->lE_Tx_control->setEnabled(true);
-        updateDataBase("0", "parameter", "select_vector", 4);
+        updateDataBase("1", "parameter", "select_vector", 4);
     }
     else
     {
         ui->lE_Tx_control->setEnabled(false);
-        updateDataBase("1", "parameter", "select_vector", 4);
+        updateDataBase("0", "parameter", "select_vector", 4);
     }
 }
 
@@ -928,12 +928,12 @@ void HandGuidingForm::on_cB_Ty_control_clicked()
     if(ui->cB_Ty_control->checkState() == Qt::Checked)
     {
         ui->lE_Ty_control->setEnabled(true);
-        updateDataBase("0", "parameter", "select_vector", 5);
+        updateDataBase("1", "parameter", "select_vector", 5);
     }
     else
     {
         ui->lE_Ty_control->setEnabled(false);
-        updateDataBase("1", "parameter", "select_vector", 5);
+        updateDataBase("0", "parameter", "select_vector", 5);
     }
 }
 
@@ -942,12 +942,12 @@ void HandGuidingForm::on_cB_Tz_control_clicked()
     if(ui->cB_Tz_control->checkState() == Qt::Checked)
     {
         ui->lE_Tz_control->setEnabled(true);
-        updateDataBase("0", "parameter", "select_vector", 6);
+        updateDataBase("1", "parameter", "select_vector", 6);
     }
     else
     {
         ui->lE_Tz_control->setEnabled(false);
-        updateDataBase("1", "parameter", "select_vector", 6);
+        updateDataBase("0", "parameter", "select_vector", 6);
     }
 }
 
@@ -1207,4 +1207,9 @@ void HandGuidingForm::on_rBParallel_clicked()
 void HandGuidingForm::on_lEOverEstimateDis_textChanged(const QString &arg1)
 {
     robot_control_->setOverEstimatedDis(arg1.toDouble());
+}
+
+void HandGuidingForm::on_pushButton_clicked()
+{
+    robot_control_->enableForceControlThread();
 }

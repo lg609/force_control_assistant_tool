@@ -67,7 +67,7 @@ public:
     //!
     void updateRobotGoal();
     //!
-    void getRobotOutput();
+    int getRobotOutput();
     //!
     void getRobotEndWrench(double * wrench);
     //!
@@ -79,6 +79,8 @@ public:
 
     /******** Force Control function ********/
     void startForceControl();
+
+    void enableForceControlThread();
     //!
     void setSelectionVector(const double * vec);
     //!
@@ -201,7 +203,7 @@ private:
     RLIntface *aral_interface_;
     std::mutex mtx_;
     static int count;
-    struct timeval time1;
+    struct timeval time1, time2;
 
     std::map<std::string, int> para_table_;
 

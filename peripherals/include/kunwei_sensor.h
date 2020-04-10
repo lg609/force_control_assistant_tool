@@ -40,7 +40,7 @@ typedef struct KunWeiResponseStruct
 } KunWeiResponse;
 
 
-//#define NEW_KUNWEI_SENSOR
+#define NEW_KUNWEI_SENSOR
 
 class KunWeiSensor: public FTSensor
 {
@@ -68,7 +68,6 @@ private:
     int kwr_read_continous_request();
     int kwr_ft_zero();
     KunWeiResponse *dev;
-    void data2force(char* data, float* Force);
 #else
     int writeCommand(SENSOR_COMMAND command);
     int readSensor(unsigned char m_rec_data[]);
@@ -88,6 +87,6 @@ private:
     char command_head_;
     std::thread read_sensor_data_;
 };
-
+void data2force(char* data, float* Force);
 
 #endif // KUNWEISENSOR_H

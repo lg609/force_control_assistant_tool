@@ -212,6 +212,7 @@ private slots:
     void on_rBSerial_clicked();
     void on_rBParallel_clicked();
     void on_lEOverEstimateDis_textChanged(const QString &arg1);
+    void on_pushButton_clicked();
 };
 
 #endif // HandGuidingForm_H

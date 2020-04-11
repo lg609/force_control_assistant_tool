@@ -4,7 +4,7 @@
 
 int RobotControl::count = 0;
 
-//#define test_test
+#define test_test
 
 using namespace ARAL;
 #ifdef test_test
@@ -2140,7 +2140,7 @@ void RobotControl::initalControlPara()
     cart_stiffness_.setToZero();
     tool_pose_.setToZero();
     ft_sensor_pose_.setToZero();
-    selection_vector_.setConstant(1);
+    selection_vector_.setConstant(0);
     end_ft_threshold_.setToZero();
     end_ft_limit_.setConstant(20);  // set as temporary
     goal_wrench_.setToZero();
@@ -2160,6 +2160,9 @@ void RobotControl::startForceControl()
 
     while(enable_thread_)
     {
+#ifdef test_test
+        ft_share_->startFlag = 1;
+#endif
         if(ft_share_->startFlag == 1 && IO_switch_)
         {
             ft_share_->startFlag = 0;
@@ -2175,8 +2178,9 @@ void RobotControl::startForceControl()
             printf("count222:%d, \n", duration);
 
 #ifdef test_test
+            ft_share_->startFlag = 1;
             delay.tv_sec = 0;
-            delay.tv_usec = 50000; // 50 us
+            delay.tv_usec = 500000; // 50 us
             select(0, NULL, NULL, NULL, &delay);
 #endif
         }

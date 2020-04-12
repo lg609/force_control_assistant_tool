@@ -4,7 +4,7 @@
 
 int RobotControl::count = 0;
 
-#define test_test
+//#define test_test
 
 using namespace ARAL;
 #ifdef test_test
@@ -2080,11 +2080,12 @@ bool RobotControl::initShareMemory()
     key = ftok(pathname,'z');
     if((shmid = shmget(key, sizeof(ForceControlData), 0666 | IPC_CREAT)) < 0)
     {
-        perror(pathname);
-        return false;
+        perror("failed to create the share memory");
+        exit(-1);
     }
     shm = shmat(shmid, (void*)0, 0);
     ft_share_ = (ForceControlData *)shm;
+    ft_share_->enableForceControl = 0;
 
     return true;
 }
@@ -2117,10 +2118,14 @@ void RobotControl::updateRobotGoal()
     aral_interface_->setRefTraj(q, NULL, NULL);
 }
 
-int RobotControl::getRobotOutput()
+void RobotControl::getRobotOutput()
 {
     aral_interface_->getRobotEndWrench(force_of_end_.data());
-    return aral_interface_->getJointCommand(ft_share_->curJointPos, ft_share_->curJointVel, ft_share_->curJointAcc);
+    ft_share_->errCode = aral_interface_->getJointCommand(ft_share_->cmdJointPos, ft_share_->cmdJointVel, ft_share_->cmdJointAcc);
+    if(ft_share_->errCode == -101)
+    {
+        printf("err:-101\n");
+    }
 }
 
 void RobotControl::getRobotEndWrench(double * wrench)
@@ -2167,12 +2172,12 @@ void RobotControl::startForceControl()
         {
             ft_share_->startFlag = 0;
             gettimeofday(&time1, NULL);
-            printf("count:%d, sec: %d, usec: %d \n", count, time1.tv_sec, time1.tv_usec);
+//            printf("count:%d, sec: %d, usec: %d \n", count, time1.tv_sec, time1.tv_usec);
 
             updateRobotStatus();
             updateRobotGoal();
             getRobotOutput();
-            ft_share_->endFlag = 0;
+            ft_share_->endFlag = 1;
             gettimeofday(&time2, NULL);
             int duration = (time2.tv_sec-time1.tv_sec)*1e6+time2.tv_usec-time1.tv_usec;
             printf("count222:%d, \n", duration);
@@ -2196,12 +2201,9 @@ void RobotControl::startForceControl()
 }
 
 
-void RobotControl::enableForceControlThread()
+void RobotControl::enableForceControlThread(bool flag)
 {
-    if(IO_switch_)
-        IO_switch_ = false;
-    else
-        IO_switch_ = true;
+    IO_switch_ = flag;
 }
 
 void RobotControl::enableConstraints(bool flag)
@@ -2326,14 +2328,14 @@ void RobotControl::enableAdmittanceControl()
 {
     aral_interface_->enableForceContol(true);
 //    ft_share_->trackEnable = true;
-    ft_share_->mode = 1;
+    ft_share_->enableForceControl = 1;
 }
 
 void RobotControl::disableAdmittanceControl()
 {
     aral_interface_->enableForceContol(false);
 //    ft_share_->trackEnable = false;
-    ft_share_->mode = 0;
+    ft_share_->enableForceControl = 0;
 }
 
 void RobotControl::updateAdmittancePIDPara(double value, int index)

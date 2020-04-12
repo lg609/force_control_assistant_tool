@@ -67,7 +67,7 @@ public:
     //!
     void updateRobotGoal();
     //!
-    int getRobotOutput();
+    void getRobotOutput();
     //!
     void getRobotEndWrench(double * wrench);
     //!
@@ -80,7 +80,7 @@ public:
     /******** Force Control function ********/
     void startForceControl();
 
-    void enableForceControlThread();
+    void enableForceControlThread(bool);
     //!
     void setSelectionVector(const double * vec);
     //!

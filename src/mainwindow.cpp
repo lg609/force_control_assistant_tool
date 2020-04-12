@@ -1211,5 +1211,19 @@ void HandGuidingForm::on_lEOverEstimateDis_textChanged(const QString &arg1)
 
 void HandGuidingForm::on_pushButton_clicked()
 {
-    robot_control_->enableForceControlThread();
+    if(ui->pushButton->text() == "Start")
+    {
+        robot_control_->enableForceControlThread(true);
+        ui->pushButton->setText("Stop");
+    }
+    else
+    {
+        robot_control_->enableForceControlThread(true);
+        ui->pushButton->setText("Start");
+        if(ui->cB_Enable_FT_Control->checkState() == Qt::Checked)
+        {
+            ui->cB_Enable_FT_Control->setCheckState(Qt::Unchecked);
+            robot_control_->disableAdmittanceControl();
+        }
+    }
 }

@@ -2122,7 +2122,7 @@ void RobotControl::getRobotOutput()
 {
     aral_interface_->getRobotEndWrench(force_of_end_.data());
     ft_share_->errCode = aral_interface_->getJointCommand(ft_share_->cmdJointPos, ft_share_->cmdJointVel, ft_share_->cmdJointAcc);
-    if(ft_share_->errCode == -101)
+    if(ft_share_->errCode == -116)
     {
         printf("err:-101\n");
     }

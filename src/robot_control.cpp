@@ -2329,6 +2329,33 @@ void RobotControl::enableAdmittanceControl()
     aral_interface_->enableForceContol(true);
 //    ft_share_->trackEnable = true;
     ft_share_->enableForceControl = 1;
+
+    JointArray joints[FT_SENSOR_CALIB__NUM];
+    Wrench measurement[FT_SENSOR_CALIB__NUM];
+
+//    double data1[] = {-15*M_PI/180,15*M_PI/180,75*M_PI/180,60*M_PI/180,80*M_PI/180,0};
+//    double data2[] = {-36*M_PI/180,27*M_PI/180,95*M_PI/180,-27*M_PI/180,0*M_PI/180,0};
+//    double data3[] = {-36*M_PI/180,21*M_PI/180,100*M_PI/180,-6*M_PI/180,90*M_PI/180,0};
+
+//    joints[0].setData(6, data1);
+//    joints[1].setData(6, data2);
+//    joints[2].setData(6, data3);
+
+
+//    double dd1[] = {-9.8839,-1.82701,-0.12016,0.08255,-0.190,0.1487};
+//    double dd2[] = {-9.83771,-1.8097,-0.0406,0.0828,-0.1955,0.1484};
+//    double dd3[] = {0.5495,9.7566,-0.2766,0.2374,0.0302,0.1487};
+
+
+//    measurement[0].setData(6, dd1);
+//    measurement[1].setData(6, dd2);
+//    measurement[2].setData(6, dd3);
+
+    FtSensorCalibrationResult result;
+
+    aral_interface_->calibToolAndSensor(joints, measurement, result);
+
+    ft_share_->enableForceControl = 0;
 }
 
 void RobotControl::disableAdmittanceControl()

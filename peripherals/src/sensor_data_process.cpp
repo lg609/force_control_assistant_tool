@@ -144,6 +144,7 @@ void FTSensorDataProcess::obtainFTSensorData()
             {
                 s_sensor_data[i] = m_ftData[i];
             }
+            s_sensor_data[2] -= 10;
         }
         usleep(1*1000);
     }

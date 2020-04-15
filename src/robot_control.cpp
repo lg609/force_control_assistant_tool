@@ -4,7 +4,7 @@
 
 int RobotControl::count = 0;
 
-#define test_test
+//#define test_test
 
 using namespace ARAL;
 #ifdef test_test

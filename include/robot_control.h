@@ -11,8 +11,21 @@
 #include <sys/shm.h>
 #include <mutex>          // std::mutex
 
+#include <string>
+#include <iostream>
+
+//#define USE_SDK
+#ifdef USE_SDK
+    #include "AuboRobotMetaType.h"
+    #include "serviceinterface.h"
+#endif
+
+
 #include "sensor_data_process.h"
 #include "rl_interface/robot_interface.hpp"
+
+#define SERVER_HOST "127.0.0.1"
+#define SERVER_PORT 8899
 
 enum DRAG_MODE
 {
@@ -53,6 +66,8 @@ enum PARA_TYPE
 };
 
 using namespace ARAL;
+using namespace std;
+
 
 class RobotControl
 {
@@ -102,7 +117,7 @@ public:
     /******** Calibration function ********/
     int moveToTargetPose(int index);
     //!
-    void getCalibrationPose(int index, double joint_angle[]);
+    void getCalibrationPose(int index, double* joint_angle);
     //!
     int calibrateFTSensor(FtSensorCalibrationResult &result);
 
@@ -211,6 +226,9 @@ private:
 
     const double joint_max_acc_ = 100.0/180.0*M_PI;
     const double joint_max_velc_ = 50.0/180.0*M_PI;
+#ifdef USE_SDK
+    ServiceInterface robot_service_;
+#endif
 };
 
 #endif // ROBOTCONTROL_H

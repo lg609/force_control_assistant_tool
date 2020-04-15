@@ -4,7 +4,7 @@
 
 int RobotControl::count = 0;
 
-//#define test_test
+#define test_test
 
 using namespace ARAL;
 #ifdef test_test
@@ -2031,6 +2031,17 @@ RobotControl::RobotControl(const std::string& model):
     }
     else
         std::cout<<"falied to create the shared memory communication!"<<std::endl;
+
+#ifdef USE_SDK
+    int ret = aubo_robot_namespace::InterfaceCallSuccCode;
+
+    if(robot_service_.robotServiceLogin(SERVER_HOST, SERVER_PORT, "aubo", "123456") != aubo_robot_namespace::InterfaceCallSuccCode)
+    {
+        std::cout<<"login failed"<<std::endl;
+        exit(1);
+    }
+    robot_service_.robotServiceInitGlobalMoveProfile();
+#endif
 }
 
 RobotControl::~RobotControl()
@@ -2096,10 +2107,11 @@ void RobotControl::updateRobotStatus()
     memcpy(q, ft_share_->curJointPos, sizeof(double) * ROBOT_DOF);
 #ifdef test_test
     memcpy(q, poses[(count++) % 2000], sizeof(double) * ROBOT_DOF);
+    aral_interface_->updateEndFTSensorData(goal_wrench_);
+#else
+    aral_interface_->updateEndFTSensorData(FTSensorDataProcess::s_sensor_data);
 #endif
     aral_interface_->updatJointPVAStatus(q, NULL, NULL);
-
-    aral_interface_->updateEndFTSensorData(goal_wrench_);
 
 //    aral_interface_->updateEndFTSensorData(FTSensorDataProcess::getSensorData().data());
 #ifdef test_test
@@ -2121,10 +2133,11 @@ void RobotControl::updateRobotGoal()
 void RobotControl::getRobotOutput()
 {
     aral_interface_->getRobotEndWrench(force_of_end_.data());
-    ft_share_->errCode = aral_interface_->getJointCommand(ft_share_->cmdJointPos, ft_share_->cmdJointVel, ft_share_->cmdJointAcc);
+    ft_share_->errCode = aral_interface_->calJointCommand(ft_share_->cmdJointPos, ft_share_->cmdJointVel, ft_share_->cmdJointAcc);
     if(ft_share_->errCode == -116)
     {
-        printf("err:-101\n");
+        printf("err:-116\n");
+        exit(-2);
     }
 }
 
@@ -2150,6 +2163,7 @@ void RobotControl::initalControlPara()
     end_ft_limit_.setConstant(20);  // set as temporary
     goal_wrench_.setToZero();
     enable_thread_ = true;
+    setForceControlMode(1); //trajectory tracking control
 }
 
 /******** force control function ********/
@@ -2285,30 +2299,33 @@ void RobotControl::setMaxRotSpeed(double rot)
 }
 
 /******** Calibration function ********/
-int RobotControl::moveToTargetPose(int /*index*/)
+int RobotControl::moveToTargetPose(int index)
 {
     //move to target pose
-//    robotServiceSend.robotServiceInitGlobalMoveProfile();
-//    aubo_robot_namespace::JointVelcAccParam jointMaxAcc, jointMaxVelc;
-//    memset(jointMaxAcc.jointPara, joint_max_acc_, sizeof(double)*ARM_DOF);
-//    memset(jointMaxVelc.jointPara, joint_max_velc_, sizeof(double)*ARM_DOF);
-//    robotServiceSend.robotServiceSetGlobalMoveJointMaxAcc(jointMaxAcc);
-//    robotServiceSend.robotServiceSetGlobalMoveJointMaxVelc(jointMaxVelc);
+#ifdef USE_SDK
+    robot_service_.robotServiceInitGlobalMoveProfile();
+    aubo_robot_namespace::JointVelcAccParam jointMaxAcc, jointMaxVelc;
+    memset(jointMaxAcc.jointPara, joint_max_acc_, sizeof(double)*ROBOT_DOF);
+    memset(jointMaxVelc.jointPara, joint_max_velc_, sizeof(double)*ROBOT_DOF);
+    robot_service_.robotServiceSetGlobalMoveJointMaxAcc(jointMaxAcc);
+    robot_service_.robotServiceSetGlobalMoveJointMaxVelc(jointMaxVelc);
 
-//    double joint[ROBOT_DOF];
-//    s_pose_calibration[index].toDoubleArray(joint);
-//    return robotServiceSend.robotServiceJointMove(joint, true);  // Start to move to the selected pose,if success, return 0;
-    return 0;
+    double joint[ROBOT_DOF];
+    memcpy(joint, calibration_poses_[index].data(), sizeof(double)*ROBOT_DOF);
+    return robot_service_.robotServiceJointMove(joint, true);  // Start to move to the selected pose,if success, return 0;
+#endif
 }
 
-void RobotControl::getCalibrationPose(int /*index*/, double* /*joint_angle[]*/)
+void RobotControl::getCalibrationPose(int index, double* joint_angle)
 {
     //move to target pose
-//    aubo_robot_namespace::wayPoint_S wayPoint;
-//    robotServiceSend.robotServiceGetCurrentWaypointInfo(wayPoint);
-//    for(int i = 0; i < ARM_DOF; i++)
-//        s_pose_calibration[index](i) = wayPoint.jointpos[i];
-//    memcpy(joint_angle, wayPoint.jointpos, sizeof(double)*ARM_DOF);
+#ifdef USE_SDK
+    aubo_robot_namespace::wayPoint_S wayPoint;
+    int ret = robot_service_.robotServiceGetCurrentWaypointInfo(wayPoint);
+    for(int i = 0; i < ROBOT_DOF; i++)
+        calibration_poses_[index](i) = wayPoint.jointpos[i];
+    memcpy(joint_angle, wayPoint.jointpos, sizeof(double)*ROBOT_DOF);
+#endif
 }
 
 int RobotControl::calibrateFTSensor(FtSensorCalibrationResult &result)
@@ -2385,22 +2402,23 @@ void RobotControl::setEndFTSensorThreshold(double data[SENSOR_DIMENSION])
 
 void RobotControl::setEndFTSensorLimit(double data[SENSOR_DIMENSION])
 {
-//    aral_interface_->setEndFTSensorLimit(data);
+    aral_interface_->setEndFTSensorLimit(data);
 }
 
 int RobotControl::setCartStiffness(double data[CARTESIAN_FREEDOM])
 {
-//    return aral_interface_->setCartStiffness(data);
+    int ret = 0;
+    return aral_interface_->setCartStiffness(data);
 }
 
 int RobotControl::setCartDamp(double data[CARTESIAN_FREEDOM])
 {
-//    return aral_interface_->setCartDamp(data);
+    return aral_interface_->setCartDamp(data);
 }
 
 int RobotControl::setCartMass(double data[CARTESIAN_FREEDOM])
 {
-//    return aral_interface_->setCartMass(data);
+    return aral_interface_->setCartMass(data);
 }
 
 void RobotControl::setOverEstimatedDis(const double dis)

@@ -4,9 +4,9 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = force_control_assistant_tool
 TEMPLATE = app
-CONFIG += c++11
-DEFINES += _GLIBCXX_USE_CXX11_ABI=0
-QMAKE_CXXFLAGS += -std=c++11
+#CONFIG += c++11
+#DEFINES += _GLIBCXX_USE_CXX11_ABI=0
+#QMAKE_CXXFLAGS += -std=c++11
 
 DESTDIR += ./bin
 
@@ -33,6 +33,7 @@ INCLUDEPATH += $$PWD/utility/include/
 
 INCLUDEPATH += $$PWD/../aral_export/include/
 
+#include(/home/aubo/Robot/source/OUR-I5/trunk/sdk/RobotInterfaceDevelop/sdk-source/sdk.pri)
 
 HEADERS  += $$PWD/include/mainwindow.h \
             $$PWD/include/robot_control.h \

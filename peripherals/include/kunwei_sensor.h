@@ -40,7 +40,12 @@ typedef struct KunWeiResponseStruct
 } KunWeiResponse;
 
 
-#define NEW_KUNWEI_SENSOR
+//#define NEW_KUNWEI_SENSOR
+
+#define coeffF1 0.002734375
+#define coeffT1 0.00009765625
+#define coeffF2 0.009765625
+#define coeffT2 0.000390625
 
 class KunWeiSensor: public FTSensor
 {
@@ -65,7 +70,6 @@ public:
 private:
 #ifdef NEW_KUNWEI_SENSOR
     typedef void* KWRHandle;
-    int kwr_read_continous_request();
     int kwr_ft_zero();
     KunWeiResponse *dev;
 #else
@@ -88,5 +92,6 @@ private:
     std::thread read_sensor_data_;
 };
 void data2force(char* data, float* Force);
+int kwr_read_request(int fd);
 
 #endif // KUNWEISENSOR_H

@@ -21,8 +21,9 @@
 KunWeiSensor::KunWeiSensor(std::string port_name)
 {
     port_name_  = "/dev/" + port_name;
-#ifndef NEW_KUNWEI_SENSOR
     std::cout<<"port_name:"<<port_name<<std::endl;
+
+#ifndef NEW_KUNWEI_SENSOR
     serial_port_ = new SerialPort();
     m_serial_fd_ = serial_port_->openPort(port_name_.c_str());
     memset(&ftResponse, 0, sizeof(KunWeiResponse));
@@ -71,29 +72,37 @@ static void* kwr_recv_handler(void* arg)
 
     while (dev->running)
     {
+        kwr_read_request(dev->fd);
         len = 0;
         FD_ZERO(&readset);
         FD_SET((unsigned int)dev->fd, &readset);
         max_fd = dev->fd +1;
-        tv.tv_sec=0;
-        tv.tv_usec=0;
-        if (select(max_fd, &readset, NULL, NULL, &tv ) < 0) {
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+        if (select(max_fd, &readset, NULL, NULL, 0) < 0)
+        {
             printf("ReadData: select error\n");
             return NULL;
         }
         int nRet = FD_ISSET(dev->fd, &readset);
-        if (/*nRet == 0*/1) {
+        if (nRet) {
             len = read(dev->fd, readdata, 150);
         }
 
+        if(len < 0)
+            perror("read");
+
         //! 连续反馈模式
-        if (dev->mode == CONTINUOUS_MODE) {
+        if (dev->mode == REQUEST_MODE)
+        {
+            if(len != 15)
+                continue;
             int index = 0;
             while (index < len) {
                 char ch = readdata[index++];
                 switch (state) {
                 case 0:
-                    if (ch == 0x48) {
+                    if (ch == 0x49) {
                         state = 1;
                         frame[frame_index++] = ch;
                     }
@@ -120,6 +129,11 @@ static void* kwr_recv_handler(void* arg)
                     if (ch == 0x0A) {
                         state = 4;
                         frame[frame_index++] = ch;
+                        // 完整正确的frame
+                        data2force(&frame[1], dev->FTData);
+                        dev->force_available = 1;
+                        frame_index = 0;
+                        state = 0;
                     } else {
                         state = 0;
                         frame_index = 0;
@@ -127,21 +141,26 @@ static void* kwr_recv_handler(void* arg)
                     break;
                 case 4:
                     // 完整正确的frame
-                    data2force(&frame[1], dev->FTData);
-                    dev->force_available = 1;
-                    frame_index = 0;
-                    state = 0;
-                    break;
+//                    data2force(&frame[1], dev->FTData);
+//                    dev->force_available = 1;
+//                    frame_index = 0;
+//                    state = 0;
+//                    kwr_read_request(dev->fd);
+//                    break;
                 default:
                     break;
                 }
             }
         }
-        else if (dev->mode == REQUEST_MODE)
+        else if (dev->mode == CONTINUOUS_MODE)
         {
 
         }
 
+
+//        tv.tv_sec = 0;
+//        tv.tv_usec = 1000;
+//        select(0, NULL, NULL, NULL, &tv);
     }
 
     return (void*)0;
@@ -188,7 +207,7 @@ bool KunWeiSensor::initialFTSensor()
     if(dev->fd < 0)
     {
         fprintf(stderr, "Open serial port %s failed!\n", port_name_.c_str());
-        return false;
+        exit(-1);
     }
     struct termios OnesensorTermios_old;
     struct termios OnesensorTermios;
@@ -211,7 +230,9 @@ bool KunWeiSensor::initialFTSensor()
 
     dev->force_available = 0;
     dev->running = 1;
-    kwr_read_continous_request();
+    dev->mode = REQUEST_MODE;
+    kwr_read_request(dev->fd);
+
     pthread_create(&dev->tid, 0, kwr_recv_handler, dev);
     return true;
 #endif
@@ -375,7 +396,7 @@ void KunWeiSensor::handleSensorData2()
                 temp_data = temp_data << 4;
                 temp_data = temp_data | (uint)(m_rec_data[index +2] >> 4);
             }
-            ftResponse.FTData[0] = (int)temp_data * (float)0.009765625 * GRAVITY_ACC_;
+            ftResponse.FTData[0] = (int)temp_data * (float) coeffF1 * GRAVITY_ACC_;
             temp_data = 0;
             if ((m_rec_data[index +2] & 0x08) > 0)
             {
@@ -391,7 +412,7 @@ void KunWeiSensor::handleSensorData2()
                 temp_data = temp_data << 8;
                 temp_data = temp_data | m_rec_data[index +3];
             }
-            ftResponse.FTData[1] = (int)temp_data * (float)0.009765625 * GRAVITY_ACC_;
+            ftResponse.FTData[1] = (int)temp_data * (float)coeffF1 * GRAVITY_ACC_;
             temp_data = 0;
             if ((m_rec_data[index +4] & 0x80) > 0)
             {
@@ -406,7 +427,7 @@ void KunWeiSensor::handleSensorData2()
                 temp_data = temp_data << 4;
                 temp_data = temp_data | (uint)(m_rec_data[index +5] >> 4);
             }
-            ftResponse.FTData[2] = (int)temp_data * (float)0.009765625 * GRAVITY_ACC_;
+            ftResponse.FTData[2] = (int)temp_data * (float)coeffF1 * GRAVITY_ACC_;
             temp_data = 0;
             if ((m_rec_data[index +5] & 0x08) > 0)
             {
@@ -422,7 +443,7 @@ void KunWeiSensor::handleSensorData2()
                 temp_data = temp_data << 8;
                 temp_data = temp_data | m_rec_data[index +6];
             }
-            ftResponse.FTData[3] = (int)temp_data * (float)0.000390625 * GRAVITY_ACC_;
+            ftResponse.FTData[3] = (int)temp_data * (float)coeffT1 * GRAVITY_ACC_;
             temp_data = 0;
             if ((m_rec_data[index +7] & 0x80) > 0)
             {
@@ -437,7 +458,7 @@ void KunWeiSensor::handleSensorData2()
                 temp_data = temp_data << 4;
                 temp_data = temp_data | (uint)(m_rec_data[index +8] >> 4);
             }
-            ftResponse.FTData[4] = (int)temp_data * (float)0.000390625 * GRAVITY_ACC_;
+            ftResponse.FTData[4] = (int)temp_data * (float)coeffT1 * GRAVITY_ACC_;
             temp_data = 0;
             if ((m_rec_data[index +8] & 0x08) > 0)
             {
@@ -453,7 +474,7 @@ void KunWeiSensor::handleSensorData2()
                 temp_data = temp_data << 8;
                 temp_data = temp_data | m_rec_data[index +9];
             }
-            ftResponse.FTData[5] = (int)temp_data * (float)0.000390625 * GRAVITY_ACC_;
+            ftResponse.FTData[5] = (int)temp_data * (float)coeffT1 * GRAVITY_ACC_;
             }
         }
 
@@ -500,11 +521,10 @@ int KunWeiSensor::kwr_ft_zero()
 }
 
 
-int KunWeiSensor::kwr_read_continous_request()
+int kwr_read_request(int fd)
 {
-    assert(dev);
     char writedata[10]= {0};
-    writedata[0] = 0x48;
+    writedata[0] = 0x49;
     writedata[1] = 0xAA;
     writedata[2] = 0x0D;
     writedata[3] = 0x0A;
@@ -512,115 +532,107 @@ int KunWeiSensor::kwr_read_continous_request()
     while ( total_len < 4 )
     {
         len = 0;
-        len = write(dev->fd, &writedata[total_len], 4 - total_len);
-        if (len > 0)
-        {
-            total_len += len;
-        }
-        else if(len < 0)
-        {
+        len = write(fd, &writedata[total_len], 4 - total_len);
+        if (len < 0)
             return -1;
-        }
     }
-    dev->mode = CONTINUOUS_MODE;
     return 0;
 }
 
 void data2force(char* data, float* Force)
 {
-    char DataTemp = 0;
-    if ((data[1] & 0x80) > 0)
-    {
-        DataTemp = data[1];
-        DataTemp = DataTemp|0xFFFFFF00;
-        DataTemp = DataTemp << 4;
-        DataTemp = DataTemp | (uint)(data[2] >> 4);
-    }
-    else
-    {
-        DataTemp = data[1];
-        DataTemp = DataTemp << 4;
-        DataTemp = DataTemp | (uint)(data[2] >> 4);
-    }
-    Force[0] = (int)DataTemp * (float)0.009765625;
-    DataTemp = 0;
-    if ((data[2] & 0x08) > 0)
-    {
-        DataTemp = data[2];
-        DataTemp = DataTemp|0xFFFFFFF0;
-        DataTemp = DataTemp << 8;
-        DataTemp = DataTemp | data[3];
-    }
-    else
-    {
-        DataTemp = data[2];
-        DataTemp = DataTemp & 0x0F;
-        DataTemp = DataTemp << 8;
-        DataTemp = DataTemp | data[3];
-    }
-    Force[1] = (int)DataTemp * (float)0.009765625;
-    DataTemp = 0;
-    if ((data[4] & 0x80) > 0)
-    {
-        DataTemp = data[4];
-        DataTemp = DataTemp|0xFFFFFF00;
-        DataTemp = DataTemp << 4;
-        DataTemp = DataTemp | (uint)(data[5] >> 4);
-    }
-    else
-    {
-        DataTemp = data[4];
-        DataTemp = DataTemp << 4;
-        DataTemp = DataTemp | (uint)(data[5] >> 4);
-    }
-    Force[2] = (int)DataTemp * (float)0.009765625;
-    DataTemp = 0;
-    if ((data[5] & 0x08) > 0)
-    {
-        DataTemp = data[5];
-        DataTemp = DataTemp|0xFFFFFFF0;
-        DataTemp = DataTemp << 8;
-        DataTemp = DataTemp | data[6];
-    }
-    else
-    {
-        DataTemp = data[5];
-        DataTemp = DataTemp & 0x0F;
-        DataTemp = DataTemp << 8;
-        DataTemp = DataTemp | data[6];
-    }
-    Force[3] = (int)DataTemp * (float)0.000390625;
-    DataTemp = 0;
-    if ((data[7] & 0x80) > 0)
-    {
-        DataTemp = data[7];
-        DataTemp = DataTemp|0xFFFFFF00;
-        DataTemp = DataTemp << 4;
-        DataTemp = DataTemp | (uint)(data[8] >> 4);
-    }
-    else
-    {
-        DataTemp = data[7];
-        DataTemp = DataTemp << 4;
-        DataTemp = DataTemp | (uint)(data[8] >> 4);
-    }
-    Force[4] = (int)DataTemp * (float)0.000390625;
-    DataTemp = 0;
-    if ((data[8] & 0x08) > 0)
-    {
-        DataTemp = data[8];
-        DataTemp = DataTemp|0xFFFFFFF0;
-        DataTemp = DataTemp << 8;
-        DataTemp = DataTemp | data[9];
-    }
-    else
-    {
-        DataTemp = data[8];
-        DataTemp = DataTemp & 0x0F;
-        DataTemp = DataTemp << 8;
-        DataTemp = DataTemp | data[9];
-    }
-    Force[5] = (int)DataTemp * (float)0.000390625;
+        char DataTemp = 0;
+        if ((data[1] & 0x80) > 0)
+        {
+            DataTemp = data[1];
+            DataTemp = DataTemp|0xFFFFFF00;
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[2] ;
+        }
+        else
+        {
+            DataTemp = data[1];
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[2] ;
+        }
+        Force[0] = (int)DataTemp * (float)/*0.009765625*/1 * GRAVITY_ACC_;
+        DataTemp = 0;
+        if ((data[3] & 0x08) > 0)
+        {
+            DataTemp = data[3];
+            DataTemp = DataTemp|0xFFFFFF00;
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[4];
+        }
+        else
+        {
+            DataTemp = data[3];
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[4];
+        }
+        Force[1] = (int)DataTemp * (float)/*0.009765625*/1 * GRAVITY_ACC_;
+        DataTemp = 0;
+        if ((data[5] & 0x80) > 0)
+        {
+            DataTemp = data[5];
+            DataTemp = DataTemp|0xFFFFFF00;
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[6] ;
+        }
+        else
+        {
+            DataTemp = data[5];
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[6] ;
+        }
+        Force[2] = (int)DataTemp * (float)/*0.009765625*/1 * GRAVITY_ACC_;
+        DataTemp = 0;
+        if ((data[7] & 0x08) > 0)
+        {
+            DataTemp = data[7];
+            DataTemp = DataTemp|0xFFFFFF00;
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[8];
+        }
+        else
+        {
+            DataTemp = data[7];
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[8];
+        }
+        Force[3] = (int)DataTemp * (float)/*0.000390625*/1 * GRAVITY_ACC_;
+        DataTemp = 0;
+        if ((data[9] & 0x80) > 0)
+        {
+            DataTemp = data[9];
+            DataTemp = DataTemp|0xFFFFFF00;
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[10];
+        }
+        else
+        {
+            DataTemp = data[9];
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[10] ;
+        }
+        Force[4] = (int)DataTemp * (float)0.000390625 * GRAVITY_ACC_;
+        DataTemp = 0;
+        if ((data[11] & 0x08) > 0)
+        {
+            DataTemp = data[11];
+            DataTemp = DataTemp|0xFFFFFF00;
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[12];
+        }
+        else
+        {
+            DataTemp = data[11];
+            DataTemp = DataTemp << 8;
+            DataTemp = DataTemp | data[12];
+        }
+        Force[5] = (int)DataTemp * (float)0.000390625 * GRAVITY_ACC_;
+
+        printf("force:%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n", data[1], data[2], data[3], data[4], data[6],data[7], data[8], data[9], data[10], data[11], data[12], data[13]);
 }
 
 #endif

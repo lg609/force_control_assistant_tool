@@ -17,7 +17,6 @@ FTSensorDataProcess::FTSensorDataProcess():sensor_data_stable_(false),thread_liv
     sensor_type_.insert(std::pair<std::string, int>("ATI", SENSOR_TYPE::ATI));
     sensor_type_.insert(std::pair<std::string, int>("KunWei", SENSOR_TYPE::KunWei));
 
-//
     read_sensor_data_ = new std::thread(std::bind(&FTSensorDataProcess::obtainFTSensorData, this));
     std::cout<<"Start the read sensor thread!"<<std::endl;
 }
@@ -145,6 +144,7 @@ void FTSensorDataProcess::obtainFTSensorData()
             {
                 s_sensor_data[i] = m_ftData[i];
             }
+            s_sensor_data[2] -= 10;
         }
         usleep(1*1000);
     }

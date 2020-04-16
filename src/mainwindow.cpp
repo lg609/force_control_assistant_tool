@@ -35,14 +35,15 @@ void HandGuidingForm::initialDevice()
     {
         QString str = "Data base error!";
         displayMessage(str);
-        return;
+        perror("Data base error!");
+        exit(-1);
     }
 //    table = QString("create table calibrate(para varchar(20) primary key, ""v1 varchar(20), v2 varchar(20),v3 varchar(20),v4 varchar(20),v5 varchar(20),v6 varchar(20))");
-//    flag = ft_sensor_data_process_->createFTDBTable(table);
+//    flag = ft_sensor_util_->createFTDBTable(table);
 //    double value[6] = {0};
-//    flag = ft_sensor_data_process_->insertFTDBData("calibrate","pos1", value);
-//    flag = ft_sensor_data_process_->insertFTDBData("calibrate","pos2", value);
-//    flag = ft_sensor_data_process_->insertFTDBData("calibrate","pos3", value);
+//    flag = ft_sensor_util_->insertFTDBData("calibrate", "pos1", value);
+//    flag = ft_sensor_util_->insertFTDBData("calibrate", "pos2", value);
+//    flag = ft_sensor_util_->insertFTDBData("calibrate", "pos3", value);
 
     for(int i = 0; i< CALIBRATION_POS::POSE_Total; i++)
     {
@@ -145,12 +146,12 @@ void HandGuidingForm::updateUI()
     if(controlModel == "serial")
     {
         ui->rBSerial->setChecked(true);
-        robot_control_->setForceControlMode(0);
+        robot_control_->setThreadMode(0);
     }
     else
     {
         ui->rBParallel->setChecked(true);
-        robot_control_->setForceControlMode(1);
+        robot_control_->setThreadMode(1);
     }
 
     flag = ft_sensor_util_->getFTDBData("base", "controlSpace", controlSpace);
@@ -1034,154 +1035,185 @@ void HandGuidingForm::on_lE_Torque_Amax_Gain_textChanged(const QString &arg1)
 /******************** Setup ********************/
 /******************** Setup ********************/
 /******************** Setup ********************/
+double epsilon = 1e-3;
 void HandGuidingForm::on_lESensitivityFz_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_mass", 1);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_mass", 3);
 }
 
 void HandGuidingForm::on_lESensitivityFx_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_mass", 2);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_mass", 1);
 }
 
 void HandGuidingForm::on_lESensitivityFy_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_mass", 3);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_mass", 2);
 }
 
 void HandGuidingForm::on_lESensitivityTx_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_mass", 4);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_mass", 4);
 }
 
 void HandGuidingForm::on_lESensitivityTy_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_mass", 5);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_mass", 5);
 }
 
 void HandGuidingForm::on_lESensitivityTz_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_mass", 6);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_mass", 6);
 }
 
 void HandGuidingForm::on_lEDampVx_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_damp", 1);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_damp", 1);
 }
 
 void HandGuidingForm::on_lEDampVy_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_damp", 2);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_damp", 2);
 }
 
 void HandGuidingForm::on_lEDampVz_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_damp", 3);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_damp", 3);
 }
 
 void HandGuidingForm::on_lEDampWx_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_damp", 4);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_damp", 4);
 }
 
 void HandGuidingForm::on_lEDampWy_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_damp", 5);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_damp", 5);
 }
 
 void HandGuidingForm::on_lEDampWz_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_damp", 6);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_damp", 6);
 }
 
 void HandGuidingForm::on_lEStiffPosX_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_stiffness", 1);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_stiffness", 1);
 }
 
 void HandGuidingForm::on_lEStiffPosY_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_stiffness", 2);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_stiffness", 2);
 }
 
 void HandGuidingForm::on_lEStiffPosZ_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_stiffness", 3);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_stiffness", 3);
 }
 
 void HandGuidingForm::on_lEStiffOriX_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_stiffness", 4);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_stiffness", 4);
 }
 
 void HandGuidingForm::on_lEStiffOriY_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_stiffness", 5);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_stiffness", 5);
 }
 
 void HandGuidingForm::on_lEStiffOriZ_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "cart_stiffness", 6);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "cart_stiffness", 6);
 }
 
 void HandGuidingForm::on_lEForceXThreshold_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_threshold", 1);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_threshold", 1);
 }
 
 void HandGuidingForm::on_lEForceYThreshold_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_threshold", 2);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_threshold", 2);
 }
 
 void HandGuidingForm::on_lEForceZThreshold_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_threshold", 3);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_threshold", 3);
 }
 
 void HandGuidingForm::on_lETorqueXThreshold_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_threshold", 4);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_threshold", 4);
 }
 
 void HandGuidingForm::on_lETorqueYThreshold_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_threshold", 5);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_threshold", 5);
 }
 
 void HandGuidingForm::on_lETorqueZThreshold_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_threshold", 6);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_threshold", 6);
 }
 
 void HandGuidingForm::on_lEForceXLimit_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_limit", 1);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_limit", 1);
 }
 
 void HandGuidingForm::on_lEForceYLimit_textChanged(const QString &arg1)
 {
-    updateDataBase(arg1, "parameter", "end_ft_limit", 2);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_limit", 2);
 }
 
 void HandGuidingForm::on_lEForceZLimit_textChanged(const QString &arg1)
 {
-     updateDataBase(arg1, "parameter", "end_ft_limit", 3);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_limit", 3);
 }
 
 void HandGuidingForm::on_lETorqueXLimit_textChanged(const QString &arg1)
 {
-     updateDataBase(arg1, "parameter", "end_ft_limit", 4);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_limit", 4);
 }
 
 void HandGuidingForm::on_lETorqueYLimit_textChanged(const QString &arg1)
 {
-     updateDataBase(arg1, "parameter", "end_ft_limit", 5);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_limit", 5);
 }
 
 void HandGuidingForm::on_lETorqueZLimit_textChanged(const QString &arg1)
 {
-     updateDataBase(arg1, "parameter", "end_ft_limit", 6);
+    if(arg1.toDouble() > epsilon)
+        updateDataBase(arg1, "parameter", "end_ft_limit", 6);
 }
 
 void HandGuidingForm::on_comBHandGuidingSwitchIO_currentTextChanged(const QString &arg1)

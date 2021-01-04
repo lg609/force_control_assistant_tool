@@ -10,38 +10,30 @@ TEMPLATE = app
 
 DESTDIR += ./bin
 
-#********linking library **********************************
-unix:
-{
-    #32bit system
-    contains(QT_ARCH, i386){
-#        LIBS += -L$$PWD/lib/lib64/ -lauborobotcontroller
-        LIBS += $$PWD/../aral_export/lib32/libaubo_robotics.a
-    }
-    #64bit system
-    contains(QT_ARCH, x86_64){
-    }
-}
-LIBS += $$PWD/../aral_export/lib64/libaubo_robotics.a
-LIBS += -lpthread
-
 include(./peripherals/peripherals.pri)
 include(./utility/utility.pri)
 INCLUDEPATH += $$PWD/include
 INCLUDEPATH += $$PWD/peripherals/include/
 INCLUDEPATH += $$PWD/utility/include/
+INCLUDEPATH += $$PWD/../aral/aral_export/include/
+INCLUDEPATH += /usr/arcs/include
 
-INCLUDEPATH += $$PWD/../aral_export/include/
-
-#include(/home/aubo/Robot/source/OUR-I5/trunk/sdk/RobotInterfaceDevelop/sdk-source/sdk.pri)
 
 HEADERS  += $$PWD/include/mainwindow.h \
             $$PWD/include/robot_control.h \
 
+
 SOURCES += $$PWD/src/main.cpp \
            $$PWD/src/mainwindow.cpp \
-           $$PWD/src/robot_control.cpp
+           $$PWD/src/robot_control.cpp \
+           $$PWD/src/dynamics_check.cpp \
 
 FORMS += mainwindow.ui
+
+#********linking library **********************************
+LIBS += -L$$PWD/../aral/aral_export/lib/  -laubo_robotics
+LIBS += -L/usr/arcs/lib -laubo_driver
+LIBS += -lpthread
+
 
 

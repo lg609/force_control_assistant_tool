@@ -495,17 +495,17 @@ void HandGuidingForm::on_pBCalibration_clicked()
                 double value[6] = {0.0};
                 flag = ft_sensor_util_->insertFTDBData("parameter","toolProperty", value);
                 double m = result.mass;
-                Vector vec = result.com;
+                Vector3d vec = result.com;
                 flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(m), 1);
-                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec(0)), 2);
-                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec(1)), 3);
-                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec(2)), 4);
+                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[0]), 2);
+                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[1]), 3);
+                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[2]), 4);
 
                 ui->pBStart->setEnabled(true);
                 FTSensorDataProcess::s_sensor_data_calibrated = true;
                 displayMessage("update sensor offset from measurment.");
-                QString str = "mass: " + QString::number(m) + "center:" + QString::number(vec(0),'f',4)
-                        + "," + QString::number(vec(1),'f',4) + "," + QString::number(vec(2), 'f', 4);
+                QString str = "mass: " + QString::number(m) + "center:" + QString::number(vec[0],'f',4)
+                        + "," + QString::number(vec[1],'f',4) + "," + QString::number(vec[2], 'f', 4);
                 displayMessage(str);
             }
         }
@@ -1259,3 +1259,6 @@ void HandGuidingForm::on_pushButton_clicked()
         }
     }
 }
+
+
+

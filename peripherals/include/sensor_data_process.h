@@ -14,7 +14,7 @@
 
 #include "ft_sensor.h"
 #include "kunwei_sensor.h"
-#include "rl_interface/robot_interface.hpp"
+#include "aral/robot_library_interface.hpp"
 
 using namespace ARAL;
 
@@ -25,6 +25,8 @@ enum CALIBRATION_POS
     POSE_Z,
     POSE_Total
 };
+
+typedef RLWrench Wrench;
 
 class FTSensorDataProcess
 {

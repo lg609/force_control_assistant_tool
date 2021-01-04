@@ -3,12 +3,13 @@
 
 #include "database.h"
 #include "ft_sensor.h"
-#include "rl_interface/robot_interface.hpp"
+#include "aral/robot_library_interface.hpp"
 
 #include <string>
 
 using namespace ARAL;
 
+typedef RLWrench Wrench;
 
 class FTSensorUtil
 {

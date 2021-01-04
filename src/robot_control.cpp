@@ -4,7 +4,7 @@
 
 int RobotControl::count = 0;
 
-//#define test_test
+#define test_test
 
 using namespace ARAL;
 #ifdef test_test
@@ -2015,8 +2015,8 @@ RobotControl::RobotControl(const std::string& model):
     IO_name_("0"),
     IO_switch_(false)
 {
-    aral_interface_ = new RLIntface(model.c_str()/*, Creat_Share_Memory*/);
-    aral_interface_->initialRLInterface();
+    aral_interface_ = CreateRLIntfacePtr(model.c_str(), /*Creat_Share_Memory*/0 | LOG_DEBUG);
+//    aral_interface_->initialRLInterface();
     createParaTable();
 
 #ifdef test_test
@@ -2056,8 +2056,7 @@ RobotControl::~RobotControl()
 
     //clean the share memory function.  second
 
-    delete aral_interface_;
-    aral_interface_ = NULL;
+    aral_interface_ = nullptr;
 
     shmdt(shm);
     shmctl(shmid, IPC_RMID, NULL) ;
@@ -2154,15 +2153,15 @@ void RobotControl::initalControlPara()
     aral_interface_->enableSingularityConsistent(false);
     ft_share_->startFlag = 0;
     ft_share_->endFlag = 0;
-    cart_mass_.setToZero();
-    cart_damp_.setToZero();
-    cart_stiffness_.setToZero();
-    tool_pose_.setToZero();
-    ft_sensor_pose_.setToZero();
-    selection_vector_.setConstant(0);
-    end_ft_threshold_.setToZero();
-    end_ft_limit_.setConstant(20);  // set as temporary
-    goal_wrench_.setToZero();
+    cart_mass_.fill(0);
+    cart_damp_.fill(0);
+    cart_stiffness_.fill(0);
+    tool_pose_.fill(0);
+    ft_sensor_pose_.fill(0);
+    selection_vector_.fill(0);
+    end_ft_threshold_.fill(0);
+    end_ft_limit_.fill(20);  // set as temporary
+    goal_wrench_.fill(0);
     enable_thread_ = true;
     setForceControlMode(1); //trajectory tracking control
 }

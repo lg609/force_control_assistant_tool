@@ -14,15 +14,10 @@
 #include <string>
 #include <iostream>
 
-//#define USE_SDK
-#ifdef USE_SDK
-    #include "AuboRobotMetaType.h"
-    #include "serviceinterface.h"
-#endif
-
-
 #include "sensor_data_process.h"
-#include "rl_interface/robot_interface.hpp"
+#include "aral/robot_library_interface.hpp"
+#include <aubo_driver/aubo_driver.h>
+using namespace arcs::aubo_driver;
 
 #define SERVER_HOST "127.0.0.1"
 #define SERVER_PORT 8899
@@ -174,11 +169,13 @@ public:
     inline void setCalibrationPose(double data[SENSOR_DIMENSION], int index)
     {
         for(int i = 0; i < SENSOR_DIMENSION; i++)
-            calibration_poses_[index](i) = data[i];
+            calibration_poses_[index][i] = data[i];
     }
 
 
 private:
+    typedef RLJntArray JointArray;
+    typedef RLPose CartArray;
     bool enable_thread_;
     double control_period_;
     JointArray calibration_poses_[CALIBRATION_POS::POSE_Total];
@@ -215,7 +212,7 @@ private:
     int shmid;
     ForceControlData * ft_share_;
     std::thread* force_control_;
-    RLIntface *aral_interface_;
+    ARAL::RLIntfacePtr aral_interface_;
     std::mutex mtx_;
     static int count;
     struct timeval time1, time2;

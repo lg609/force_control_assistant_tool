@@ -71,7 +71,7 @@ bool FTSensorDataProcess::sensorTypeSelect(std::string sensorType, std::string d
         }
 //        if(devName == "")
             devName = "ttyUSB0";
-        kws = new KunWeiSensor(devName);
+//        kws = new KunWeiSensor(devName);
         ft_sensor_ = (KunWeiSensor*)kws;
     }
 
@@ -86,7 +86,8 @@ void FTSensorDataProcess::obtainCalibrationPos(int index)
 {
     //obtain the sensor data in pose 1 2,3;
     sleep(1);       //wait for robot and sensor stable,1s
-    s_calibrationMeasurements[index] = s_sensor_data + s_sensor_offset;
+    for(int i = 0; i < 6; i++)
+        s_calibrationMeasurements[index][i] = s_sensor_data[i] + s_sensor_offset[i];
     std::cout<<"s_calibrationMeasurements"<<s_calibrationMeasurements[index][0]<<","<<s_calibrationMeasurements[index][1]<<","
             <<s_calibrationMeasurements[index][2]<<","<<s_calibrationMeasurements[index][3]<<","<<s_calibrationMeasurements[index][4]<<","<<s_calibrationMeasurements[index][5]<<std::endl;
 }

@@ -31,7 +31,7 @@ SOURCES += $$PWD/src/main.cpp \
 FORMS += mainwindow.ui
 
 #********linking library **********************************
-LIBS += -L$$PWD/../aral/aral_export/lib/  -laral
+LIBS += -L$$PWD/../aral/aral_export/lib/  -laral_d
 LIBS += -L/usr/arcs/lib -laubo_driver
 LIBS += -lpthread
 

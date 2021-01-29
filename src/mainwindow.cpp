@@ -9,18 +9,18 @@ HandGuidingForm::HandGuidingForm(QWidget *parent) :
 {
     ui->setupUi(this);
     robot_control_ = new RobotControl("aubo_i5");
-    ft_sensor_data_process_ = new FTSensorDataProcess();
+//    ft_sensor_data_process_ = new FTSensorDataProcess();
     ft_sensor_util_ = new FTSensorUtil();
 
-    initialDevice();
+//    initialDevice();
     initialUI();
 }
 
 HandGuidingForm::~HandGuidingForm()
 {
     delete robot_control_;
-    delete ft_sensor_data_process_;
-    delete ft_sensor_util_;
+    if(ft_sensor_util_ != NULL)
+       delete ft_sensor_util_;
     delete ui;
 }
 
@@ -111,6 +111,7 @@ void HandGuidingForm::initialDevice()
 
 void HandGuidingForm::updateUI()
 {
+    return;
     bool flag = false;
     QString dragMode, calculateMethod, controlModel, controlSpace, controlPeriod, overEstimateDis, filter1, filter2;
     flag = ft_sensor_util_->getFTDBData("base", "dragMode", dragMode);
@@ -491,19 +492,25 @@ void HandGuidingForm::on_pBCalibration_clicked()
                 bool flag;
                 Wrench sensorOffset;
                 memcpy(sensorOffset.data(), &result.offset, sizeof(double)*SENSOR_DIMENSION);
-                ft_sensor_util_->setFTSensorOffsetToDB(sensorOffset);
-                double value[6] = {0.0};
-                flag = ft_sensor_util_->insertFTDBData("parameter","toolProperty", value);
+//                ft_sensor_util_->setFTSensorOffsetToDB(sensorOffset);
+//                double value[6] = {0.0};
+//                flag = ft_sensor_util_->insertFTDBData("parameter","toolProperty", value);
                 double m = result.mass;
                 Vector3d vec = result.com;
-                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(m), 1);
-                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[0]), 2);
-                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[1]), 3);
-                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[2]), 4);
+//                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(m), 1);
+//                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[0]), 2);
+//                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[1]), 3);
+//                flag = ft_sensor_util_->setFTDBData("parameter","toolProperty", QString::number(vec[2]), 4);
 
                 ui->pBStart->setEnabled(true);
-                FTSensorDataProcess::s_sensor_data_calibrated = true;
+//                FTSensorDataProcess::s_sensor_data_calibrated = true;
                 displayMessage("update sensor offset from measurment.");
+                std::cout<<"mass: "<<m<<"center:"<<vec[0]<<","<<vec[1]<<","<<vec[2]<<",";
+                for (int i = 0; i < 6; i++)
+                {
+                    std::cout<<result.offset[i]<<",";
+                }
+                std::cout<<std::endl;
                 QString str = "mass: " + QString::number(m) + "center:" + QString::number(vec[0],'f',4)
                         + "," + QString::number(vec[1],'f',4) + "," + QString::number(vec[2], 'f', 4);
                 displayMessage(str);
@@ -554,7 +561,7 @@ void HandGuidingForm::getCalibrationPose(int index)
         robot_control_->moveToTargetPose(index);
 
     displayMessage("robot arrives at position"+QString::number(index+1));
-    ft_sensor_data_process_->obtainCalibrationPos(index); //calibration sensor data of pose1
+    robot_control_->obtainCalibrationPos(index); //calibration sensor data of pose1
 }
 
 void HandGuidingForm::on_pBPos1_clicked()
@@ -634,6 +641,7 @@ void HandGuidingForm::on_pBStart_clicked()
         ui->gBModel->setEnabled(false);
         ui->gBCalculateMethod->setEnabled(false);
         displayMessage("start handguiding mode.");
+        robot_control_->startForceControl();
     }
     else
     {
@@ -643,6 +651,7 @@ void HandGuidingForm::on_pBStart_clicked()
         ui->gBModel->setEnabled(true);
         ui->gBCalculateMethod->setEnabled(true);
         displayMessage("exit handguiding mode.");
+        robot_control_->stopForceControl();
     }
 }
 

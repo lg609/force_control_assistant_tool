@@ -3,7 +3,6 @@
 
 Wrench FTSensorDataProcess::s_sensor_data;
 Wrench FTSensorDataProcess::s_sensor_offset;
-Wrench FTSensorDataProcess::s_calibrationMeasurements[CALIBRATION_POS::POSE_Total];
 
 bool FTSensorDataProcess::s_sensor_data_calibrated = false;
 
@@ -85,11 +84,6 @@ bool FTSensorDataProcess::sensorTypeSelect(std::string sensorType, std::string d
 void FTSensorDataProcess::obtainCalibrationPos(int index)
 {
     //obtain the sensor data in pose 1 2,3;
-    sleep(1);       //wait for robot and sensor stable,1s
-    for(int i = 0; i < 6; i++)
-        s_calibrationMeasurements[index][i] = s_sensor_data[i] + s_sensor_offset[i];
-    std::cout<<"s_calibrationMeasurements"<<s_calibrationMeasurements[index][0]<<","<<s_calibrationMeasurements[index][1]<<","
-            <<s_calibrationMeasurements[index][2]<<","<<s_calibrationMeasurements[index][3]<<","<<s_calibrationMeasurements[index][4]<<","<<s_calibrationMeasurements[index][5]<<std::endl;
 }
 
 

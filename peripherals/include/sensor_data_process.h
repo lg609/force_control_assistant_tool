@@ -48,7 +48,6 @@ public:
     inline void setSensorCalibrateStatus(bool calibrated){s_sensor_data_calibrated = calibrated;}
 
 public:
-    static Wrench s_calibrationMeasurements[CALIBRATION_POS::POSE_Total];
     static Wrench s_sensor_data;
     static Wrench s_sensor_offset;
     static bool s_sensor_data_calibrated;

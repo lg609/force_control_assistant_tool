@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/shm.h>
-#include <mutex>          // std::mutex
+#include <mutex>
 
 #include <string>
 #include <iostream>
@@ -77,7 +77,7 @@ public:
     //!
     void updateRobotGoal();
     //!
-    void getRobotOutput();
+    void getRobotOutput(std::vector<double> &joint_pos);
     //!
     void getRobotEndWrench(double * wrench);
     //!
@@ -88,7 +88,15 @@ public:
     void setMaxRotSpeed(double rot);
 
     /******** Force Control function ********/
-    void startForceControl();
+    int startForceControl();
+
+    int stopForceControl();
+
+    int forceControlThread();
+
+    void getRtdeData(AuboDriver *m_instance);
+
+    void obtainCalibrationPos(int index);
 
     void enableForceControlThread(bool);
     //!
@@ -168,8 +176,8 @@ public:
 
     inline void setCalibrationPose(double data[SENSOR_DIMENSION], int index)
     {
-        for(int i = 0; i < SENSOR_DIMENSION; i++)
-            calibration_poses_[index][i] = data[i];
+//        for(int i = 0; i < SENSOR_DIMENSION; i++)
+//            calibration_poses_[index][i] = data[i];
     }
 
 
@@ -193,6 +201,10 @@ private:
     Wrench force_of_end_;
     Wrench goal_wrench_;
 
+    std::vector<double> sensor_data_;
+    std::vector<double> current_joints_;
+    std::vector<double> original_pose_;
+    static Wrench s_calibrationMeasurements[CALIBRATION_POS::POSE_Total];
 private:
 
     double last_send_joints_;
@@ -211,7 +223,7 @@ private:
     void *shm;
     int shmid;
     ForceControlData * ft_share_;
-    std::thread* force_control_;
+//    std::thread* force_control_;
     ARAL::RLIntfacePtr aral_interface_;
     std::mutex mtx_;
     static int count;
@@ -223,9 +235,9 @@ private:
 
     const double joint_max_acc_ = 100.0/180.0*M_PI;
     const double joint_max_velc_ = 50.0/180.0*M_PI;
-#ifdef USE_SDK
-    ServiceInterface robot_service_;
-#endif
+
+    std::thread force_control_Thread_;
+    AuboDriver* aubo_driver;
 };
 
 #endif // ROBOTCONTROL_H

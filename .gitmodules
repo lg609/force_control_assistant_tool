@@ -1,4 +1,0 @@
-[submodule "libcstone"]
-	path = libcstone
-	url = http://vm1.aubo-robotics.cn:8001/arcs/libcstone.git
-	branch = feature/shm

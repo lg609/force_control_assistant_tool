@@ -139,8 +139,6 @@ public:
     /******** Calibration function ********/
     int moveToTargetPose(int index);
     //!
-    void getCalibrationPose(int index, double* joint_angle);
-    //!
     int calibrateFTSensor(FtSensorCalibrationResult &result);
 
 

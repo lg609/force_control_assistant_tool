@@ -8,7 +8,6 @@ int main(int argc, char *argv[])
     HandGuidingForm w;
     w.show();
     w.move ((QApplication::desktop()->width() - w.width())/2,(QApplication::desktop()->height() - w.height())/2);
-//     w.move(200,200);
 
     return a.exec();
 }

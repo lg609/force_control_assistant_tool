@@ -1,0 +1,24 @@
+﻿title = "TOML config"
+
+[Robot]
+name = "aubo_i5"
+server = "192.168.1.23"
+port = 30001
+
+[ForceControl]
+control_mode = 1
+selection_vector = [0, 0, 1, 0, 0, 0]
+end_ft_sensor_threshold = [0.0, 0.0, 0.1, 0.0, 0.0, 0.0]
+end_ft_sensor_limit = [200.0, 200.0, 200.0, 20.0, 20.0, 20.0]
+cart_mass = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+cart_damp = [200.0, 200.0, 200.0, 200.0, 200.0, 200.0]
+cart_stiffness = [10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+
+[MotionControl]
+control_type = 1
+control_period = 5	#unit:ms
+max_tran_speed = 0.2
+max_rot_speed = 0.25
+calibration_pose1 = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+calibration_pose2 = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+calibration_pose3 = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]

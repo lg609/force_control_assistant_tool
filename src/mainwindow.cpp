@@ -3,116 +3,78 @@
 #include "QDebug"
 #include "qmessagebox.h"
 
+#include "toml.hpp"
+
 HandGuidingForm::HandGuidingForm(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::HandGuidingForm)
 {
     ui->setupUi(this);
-    robot_control_ = new RobotControl("aubo_i5");
-//    ft_sensor_data_process_ = new FTSensorDataProcess();
-    ft_sensor_util_ = new FTSensorUtil();
-
-//    initialDevice();
+    initialPara();
     initialUI();
 }
 
 HandGuidingForm::~HandGuidingForm()
 {
-    delete robot_control_;
-    if(ft_sensor_util_ != NULL)
-       delete ft_sensor_util_;
+    if(robot_control_ != NULL)
+        delete robot_control_;
     delete ui;
 }
 
-void HandGuidingForm::initialDevice()
+void HandGuidingForm::initialPara()
 {
-    displayMessage("Initial F/T sensor...", 2000);
-    QString sensorType, connectName, table, IsInitialed;
-    bool flag;
-    double data[6] = {0.0};
+    std::string configFile = "./config.toml";
+    auto config = toml::parse(configFile);
 
-    if(!ft_sensor_util_->openDatabase("global"))
+    const auto robot = toml::find(config, "Robot");
+    std::string robotName = toml::find<std::string>(robot, "name");
+    std::string ip = toml::find<std::string>(robot, "server");
+    int port = toml::find<int>(robot, "port");
+    robot_control_ = new RobotControl(robotName, ip, port);
+    if(robot_control_ == nullptr)
     {
-        QString str = "Data base error!";
-        displayMessage(str);
-        perror("Data base error!");
-        exit(-1);
-    }
-//    table = QString("create table calibrate(para varchar(20) primary key, ""v1 varchar(20), v2 varchar(20),v3 varchar(20),v4 varchar(20),v5 varchar(20),v6 varchar(20))");
-//    flag = ft_sensor_util_->createFTDBTable(table);
-//    double value[6] = {0};
-//    flag = ft_sensor_util_->insertFTDBData("calibrate", "pos1", value);
-//    flag = ft_sensor_util_->insertFTDBData("calibrate", "pos2", value);
-//    flag = ft_sensor_util_->insertFTDBData("calibrate", "pos3", value);
-
-    for(int i = 0; i< CALIBRATION_POS::POSE_Total; i++)
-    {
-        flag = ft_sensor_util_->getFTDBData("calibrate", "pos"+QString::number(i+1), data);
-        robot_control_->setCalibrationPose(data, i);
+        std::cerr<<" 建立机器人实例失败!"<<std::endl;
+        exit(-2);
     }
 
-    flag = ft_sensor_util_->insertFTDBData("base","connectName", "ttyUSB1");
-    flag = ft_sensor_util_->getFTDBData("base", "connectName", connectName);
-    flag = ft_sensor_util_->getFTDBData("base", "type", sensorType);
-    if(!flag || sensorType == "")
-    {
-        QString str = "Data base error!";
-        displayMessage(str);
-        //default sensor -> optoforce
-        flag = ft_sensor_util_->openDatabase("optoforce");
-        ui->cBSensorName->setCurrentText("optoforce");
-    }
-    else
-    {
-        flag = ft_sensor_util_->openDatabase(sensorType);
-        cBSensorName_add_finished_ = false;
-        ui->cBSensorName->addItem("optoforce");
-        ui->cBSensorName->addItem("Robotiq");
-        ui->cBSensorName->addItem("ATI");
-        ui->cBSensorName->addItem("KunWei");
-        cBSensorName_add_finished_ = true;
-        int index = (sensorType=="optoforce")?0:(sensorType=="Robotiq")?1:(sensorType=="ATI")?2:3;
-        ui->cBSensorName->setCurrentIndex(index);
-    }
+    const auto forceControl = toml::find(config, "ForceControl");
+    std::vector<double> cart_mass = toml::find<std::vector<double>>(forceControl, "cart_mass");
+    std::vector<double> cart_damp = toml::find<std::vector<double>>(forceControl, "cart_damp");
+    std::vector<double> cart_stiffness = toml::find<std::vector<double>>(forceControl, "cart_stiffness");
+    std::vector<int> selection_vector = toml::find<std::vector<int>>(forceControl, "selection_vector");
+    std::vector<double> end_ft_sensor_threshold = toml::find<std::vector<double>>(forceControl, "end_ft_sensor_threshold");
+    std::vector<double> end_ft_sensor_limit = toml::find<std::vector<double>>(forceControl, "end_ft_sensor_limit");
 
-    flag = ft_sensor_util_->getFTDBData("base", "type", IsInitialed);
-    if(IsInitialed == "")
-    {
-        table = QString("create table base(para varchar(20) primary key, ""name varchar(20))");
-        flag = ft_sensor_util_->createFTDBTable(table);
-        flag = ft_sensor_util_->insertFTDBData("base","dragMode","position");
-        flag = ft_sensor_util_->insertFTDBData("base","calculateMethod","Jacobian");
-        flag = ft_sensor_util_->insertFTDBData("base","controlModel","velocity");
-        flag = ft_sensor_util_->insertFTDBData("base","controlPeriod","0.005");
-        flag = ft_sensor_util_->insertFTDBData("base","filter1","0");
-        flag = ft_sensor_util_->insertFTDBData("base","filter2","0");
-        double value[6] = {0.0};
-        table = QString("create table parameter(para varchar(20) primary key, ""v1 varchar(20), v2 varchar(20),v3 varchar(20),v4 varchar(20),v5 varchar(20),v6 varchar(20))");
-        flag = ft_sensor_util_->createFTDBTable(table);
-        flag = ft_sensor_util_->insertFTDBData("parameter","cart_mass", value);
-        flag = ft_sensor_util_->insertFTDBData("parameter","cart_damp", value);
-        flag = ft_sensor_util_->insertFTDBData("parameter","cart_stiffness", value);
-        flag = ft_sensor_util_->insertFTDBData("parameter","end_ft_threshold", value);
-        flag = ft_sensor_util_->insertFTDBData("parameter","end_ft_limit", value);
-        flag = ft_sensor_util_->insertFTDBData("parameter","tool_pose", value);
-        flag = ft_sensor_util_->insertFTDBData("parameter","sensor_pose",value);
+    robot_control_->setCartMass(cart_mass.data());
+    robot_control_->setCartDamp(cart_damp.data());
+    robot_control_->setCartStiffness(cart_stiffness.data());
+    robot_control_->setSelectionVector(selection_vector.data());
+    robot_control_->setEndFTSensorThreshold(end_ft_sensor_threshold.data());
+    robot_control_->setEndFTSensorLimit(end_ft_sensor_limit.data());
 
-        flag = ft_sensor_util_->insertFTDBData("base","IsInitialed","yes");
-    }
+    const auto motionControl = toml::find(config, "MotionControl");
+    int control_period = toml::find<int>(motionControl, "control_period");
+    double max_tran_speed = toml::find<double>(motionControl, "max_tran_speed");
+    double max_rot_speed = toml::find<double>(motionControl, "max_rot_speed");
+    std::vector<double> calibration_pose1 = toml::find<std::vector<double>>(motionControl, "calibration_pose1");
+    std::vector<double> calibration_pose2 = toml::find<std::vector<double>>(motionControl, "calibration_pose2");
+    std::vector<double> calibration_pose3 = toml::find<std::vector<double>>(motionControl, "calibration_pose3");
+
+    robot_control_->setControlPeriod(control_period);
+    robot_control_->setMaxTranSpeed(max_tran_speed);
+    robot_control_->setMaxRotSpeed(max_rot_speed);
+    robot_control_->setCalibrationPose(calibration_pose1.data(), 0);
+    robot_control_->setCalibrationPose(calibration_pose2.data(), 1);
+    robot_control_->setCalibrationPose(calibration_pose3.data(), 2);
+
     updateUI();
 
     ui->cBRealTime->setCheckState(Qt::Checked);
-    displayMessage("Initial robot service...", 2000);
-//    connect(ft_sensor_util_, SIGNAL(signal_sensor_over_range(QString)), this, SLOT(slot_sensor_overrange(QString)));
-//    connect(robot_control_, SIGNAL(signal_handduiding_failed(QString)), this, SLOT(slot_handduiding_failed(QString)));
 }
 
 void HandGuidingForm::updateUI()
 {
-    return;
-    bool flag = false;
     QString dragMode, calculateMethod, controlModel, controlSpace, controlPeriod, overEstimateDis, filter1, filter2;
-    flag = ft_sensor_util_->getFTDBData("base", "dragMode", dragMode);
     if(dragMode == "position")
     {
         ui->rBPos->setChecked(true);
@@ -129,7 +91,6 @@ void HandGuidingForm::updateUI()
         robot_control_->setDragMode(2);
     }
 
-    flag = ft_sensor_util_->getFTDBData("base", "calculateMethod", calculateMethod);
     if(calculateMethod == "Jacobian")
     {
         ui->rBJacobian->setChecked(true);
@@ -141,7 +102,6 @@ void HandGuidingForm::updateUI()
         robot_control_->setCalMethod(1);
     }
 
-    flag = ft_sensor_util_->getFTDBData("base", "controlModel", controlModel);
     if(controlModel == "serial")
     {
         ui->rBSerial->setChecked(true);
@@ -153,7 +113,6 @@ void HandGuidingForm::updateUI()
         robot_control_->setThreadMode(1);
     }
 
-    flag = ft_sensor_util_->getFTDBData("base", "controlSpace", controlSpace);
     if(controlSpace == "jointSpace")
     {
         ui->rBJointSpace->setChecked(true);
@@ -165,25 +124,17 @@ void HandGuidingForm::updateUI()
         robot_control_->setControlSpace(1);
     }
 
-//    flag = ft_sensor_util_->getFTDBData("base", "controlPeriod", controlPeriod);
-//  ui->lEControlPeriod->setText(controlPeriod);
-    //robot_control_->setControlPeriod(controlPeriod.toDouble());
-
-    flag = ft_sensor_util_->getFTDBData("base", "over_estimate_dis", overEstimateDis);
     ui->lEOverEstimateDis->setText(overEstimateDis);
     robot_control_->setOverEstimatedDis(overEstimateDis.toDouble());
 
-    flag = ft_sensor_util_->getFTDBData("base", "filter1", filter1);
     ui->hSFilter1->setValue(filter1.toInt());
-    robot_control_->setFilter1(filter1.toInt());
+    robot_control_->setSensorFilter(filter1.toInt());
 
-    flag = ft_sensor_util_->getFTDBData("base", "filter2", filter2);
     ui->hSFilter2->setValue(filter2.toInt());
-    robot_control_->setFilter2(filter2.toInt());
+    robot_control_->setControlFilter(filter2.toInt());
 
-    double data[6] = {0.0};
-    flag = ft_sensor_util_->getFTDBData("parameter", "cart_mass", data);
-    robot_control_->setCartMass(data);
+    std::vector<double> data;
+    data = robot_control_->getCartMass();
     ui->lESensitivityFx->setText(QString::number(data[0]));
     ui->lESensitivityFy->setText(QString::number(data[1]));
     ui->lESensitivityFz->setText(QString::number(data[2]));
@@ -191,8 +142,7 @@ void HandGuidingForm::updateUI()
     ui->lESensitivityTy->setText(QString::number(data[4]));
     ui->lESensitivityTz->setText(QString::number(data[5]));
 
-    flag = ft_sensor_util_->getFTDBData("parameter", "cart_damp", data);
-    robot_control_->setCartDamp(data);
+    data = robot_control_->getCartDamp();
     ui->lEDampVx->setText(QString::number(data[0]));
     ui->lEDampVy->setText(QString::number(data[1]));
     ui->lEDampVz->setText(QString::number(data[2]));
@@ -200,8 +150,7 @@ void HandGuidingForm::updateUI()
     ui->lEDampWy->setText(QString::number(data[4]));
     ui->lEDampWz->setText(QString::number(data[5]));
 
-    flag = ft_sensor_util_->getFTDBData("parameter", "cart_stiffness", data);
-    robot_control_->setCartStiffness(data);
+    data = robot_control_->getCartStiffness();
     ui->lEStiffPosX->setText(QString::number(data[0]));
     ui->lEStiffPosY->setText(QString::number(data[1]));
     ui->lEStiffPosZ->setText(QString::number(data[2]));
@@ -209,8 +158,7 @@ void HandGuidingForm::updateUI()
     ui->lEStiffOriY->setText(QString::number(data[4]));
     ui->lEStiffOriZ->setText(QString::number(data[5]));
 
-    flag = ft_sensor_util_->getFTDBData("parameter", "end_ft_threshold", data);
-    robot_control_->setEndFTSensorThreshold(data);
+    data = robot_control_->getEndFTSensorThreshold();
     ui->lEForceXThreshold->setText(QString::number(data[0]));
     ui->lEForceYThreshold->setText(QString::number(data[1]));
     ui->lEForceZThreshold->setText(QString::number(data[2]));
@@ -218,8 +166,7 @@ void HandGuidingForm::updateUI()
     ui->lETorqueYThreshold->setText(QString::number(data[4]));
     ui->lETorqueZThreshold->setText(QString::number(data[5]));
 
-    flag = ft_sensor_util_->getFTDBData("parameter", "end_ft_limit", data);
-    robot_control_->setEndFTSensorLimit(data);
+    data = robot_control_->getEndFTSensorLimit();
     ui->lEForceXLimit->setText(QString::number(data[0]));
     ui->lEForceYLimit->setText(QString::number(data[1]));
     ui->lEForceZLimit->setText(QString::number(data[2]));
@@ -227,24 +174,21 @@ void HandGuidingForm::updateUI()
     ui->lETorqueYLimit->setText(QString::number(data[4]));
     ui->lETorqueZLimit->setText(QString::number(data[5]));
 
-    flag = ft_sensor_util_->getFTDBData("parameter", "tool_pose", data);
-    robot_control_->setToolPose(data);
-    ui->lEPosX->setText(QString::number(data[0]));
-    ui->lEPosY->setText(QString::number(data[1]));
-    ui->lEPosZ->setText(QString::number(data[2]));
-    ui->lEPosRX->setText(QString::number(data[3]));
-    ui->lEPosRY->setText(QString::number(data[4]));
-    ui->lEPosRZ->setText(QString::number(data[5]));
+//    robot_control_->setToolPose(data);
+//    ui->lEPosX->setText(QString::number(data[0]));
+//    ui->lEPosY->setText(QString::number(data[1]));
+//    ui->lEPosZ->setText(QString::number(data[2]));
+//    ui->lEPosRX->setText(QString::number(data[3]));
+//    ui->lEPosRY->setText(QString::number(data[4]));
+//    ui->lEPosRZ->setText(QString::number(data[5]));
 
-    flag = ft_sensor_util_->getFTDBData("parameter", "sensor_pose", data);
-    robot_control_->setFTSensorPose(data);
-    ui->lEPosX_2->setText(QString::number(data[0]));
-    ui->lEPosY_2->setText(QString::number(data[1]));
-    ui->lEPosZ_2->setText(QString::number(data[2]));
-    ui->lEPosRX_2->setText(QString::number(data[3]));
-    ui->lEPosRY_2->setText(QString::number(data[4]));
-    ui->lEPosRZ_2->setText(QString::number(data[5]));
-    displayMessage("Set Tool Property");
+//    robot_control_->setFTSensorPose(data);
+//    ui->lEPosX_2->setText(QString::number(data[0]));
+//    ui->lEPosY_2->setText(QString::number(data[1]));
+//    ui->lEPosZ_2->setText(QString::number(data[2]));
+//    ui->lEPosRX_2->setText(QString::number(data[3]));
+//    ui->lEPosRY_2->setText(QString::number(data[4]));
+//    ui->lEPosRZ_2->setText(QString::number(data[5]));
 }
 
 void HandGuidingForm::initialUI()
@@ -298,7 +242,7 @@ void HandGuidingForm::updateData()
      //scan IO information
     if(robot_control_->getSensorCalibrateStatus())
     {
-        if(robot_control_->getHandGuidingSwitch())
+        if(1/*robot_control_->getHandGuidingSwitch()*/)
             ui->pBStart->setStyleSheet("background-color:green");
         else
             ui->pBStart->setStyleSheet("background-color:red");
@@ -306,7 +250,7 @@ void HandGuidingForm::updateData()
 
     ui->paintFrame->update(); //    paintEvent();
     ui->cBRealTime->setCheckState(Qt::Checked);
-    ft_sensor_util_->enableDisplaySenssorData();
+//    ft_sensor_util_->enableDisplaySenssorData();
 }
 
 void HandGuidingForm::slot_handduiding_failed(QString str)
@@ -324,7 +268,6 @@ void HandGuidingForm::slot_sensor_overrange(QString str)
 
 void HandGuidingForm::updateDataBase(QString arg1, QString table, QString name, int index)
 {
-    ft_sensor_util_->setFTDBData(table, name, arg1, index);
     robot_control_->updateControlPara(arg1.toDouble(), index-1, name.toStdString());
 }
 
@@ -406,9 +349,7 @@ void HandGuidingForm::on_lE_Port_editingFinished()
     bool flag;
     QString sensorType = ui->cBSensorName->currentText();
     QString connectName = ui->lE_Port->text();
-    flag = ft_sensor_util_->openDatabase("global");
-    flag = ft_sensor_util_->setFTDBData("base", "connectName", connectName);
-    flag = ft_sensor_util_->openDatabase(sensorType);
+
     if(!flag)
     {
         QString str = "Data base error!";
@@ -431,9 +372,7 @@ void HandGuidingForm::on_cBSensorName_currentIndexChanged(int /*index*/)
         return;
     bool flag;
     QString sensorType = ui->cBSensorName->currentText();
-    flag = ft_sensor_util_->openDatabase("global");
-    flag = ft_sensor_util_->setFTDBData("base", "type", sensorType);
-    flag = ft_sensor_util_->openDatabase(sensorType);
+
     if(!flag)
     {
         QString str = "Data base error!";
@@ -465,14 +404,13 @@ void HandGuidingForm::on_pBCalibration_clicked()
 
             Wrench sensorOffset;
             double value[6] = {0.0};
-            if(!ft_sensor_util_->getFTSensorOffsetFromDB(sensorOffset))
+            if(1/*!ft_sensor_util_->getFTSensorOffsetFromDB(sensorOffset)*/)
             {
                 QString str = "Get sensor offset failed!";
                 displayMessage(str);
             }
             else
             {
-                ft_sensor_util_->getFTDBData("parameter", "toolProperty", value);
 //                robot_control_->setToolDynamics(RigidBodyInertia(value[0],value[0]*Vector(value[1],value[2],value[3])));
                 ui->pBStart->setEnabled(true);
                 displayMessage("obatin sensor offset from database.");
@@ -547,10 +485,8 @@ void HandGuidingForm::getCalibrationPose(int index)
         robot_control_->getCalibrationPose(index, joint_angle);
 
         QString sensorType = ui->cBSensorName->currentText();
-        flag = ft_sensor_util_->openDatabase("global");
         for(int i = 0; i < SENSOR_DIMENSION; i++)
-            ft_sensor_util_->setFTDBData("calibrate","pos"+QString::number(index+1), QString::number(joint_angle[i]), i+1);
-        flag = ft_sensor_util_->openDatabase(sensorType);
+         ;
     }
     else
         robot_control_->moveToTargetPose(index);
@@ -562,19 +498,19 @@ void HandGuidingForm::getCalibrationPose(int index)
 void HandGuidingForm::on_pBPos1_clicked()
 {
      ui->pBPos1->setEnabled(false);
-     getCalibrationPose(CALIBRATION_POS::POSE_X);
+     getCalibrationPose(0);
 }
 
 void HandGuidingForm::on_pBPos2_clicked()
 {
     ui->pBPos2->setEnabled(false);
-    getCalibrationPose(CALIBRATION_POS::POSE_Y);
+    getCalibrationPose(1);
 }
 
 void HandGuidingForm::on_pBPos3_clicked()
 {
     ui->pBPos3->setEnabled(false);
-    getCalibrationPose(CALIBRATION_POS::POSE_Z);
+    getCalibrationPose(2);
 }
 
 
@@ -652,49 +588,49 @@ void HandGuidingForm::on_pBStart_clicked()
 
 void HandGuidingForm::on_rBPos_clicked()
 {
-    ft_sensor_util_->setFTDBData("base", "dragMode", "position");
+//    ft_sensor_util_->setFTDBData("base", "dragMode", "position");
     robot_control_->setDragMode(DRAG_MODE::POSITION);
 }
 
 void HandGuidingForm::on_rBOri_clicked()
 {
-    ft_sensor_util_->setFTDBData("base", "dragMode", "ori");
+//    ft_sensor_util_->setFTDBData("base", "dragMode", "ori");
     robot_control_->setDragMode(DRAG_MODE::ORI);
 }
 
 void HandGuidingForm::on_rBPose_clicked()
 {
-    ft_sensor_util_->setFTDBData("base", "dragMode", "pose");
+//    ft_sensor_util_->setFTDBData("base", "dragMode", "pose");
     robot_control_->setDragMode(DRAG_MODE::POSE);
 }
 
 void HandGuidingForm::on_rBJacobian_clicked()
 {
-    ft_sensor_util_->setFTDBData("base", "calculateMethod", "Jacobian");
+//    ft_sensor_util_->setFTDBData("base", "calculateMethod", "Jacobian");
     robot_control_->setCalMethod(0);  //Jacobian
 }
 
 void HandGuidingForm::on_rBIK_clicked()
 {
-    ft_sensor_util_->setFTDBData("base", "calculateMethod", "IK");
+//    ft_sensor_util_->setFTDBData("base", "calculateMethod", "IK");
     robot_control_->setCalMethod(1);  //IK
 }
 
 void HandGuidingForm::on_rBJointSpace_clicked()
 {
-    ft_sensor_util_->setFTDBData("base", "controlSpace", "jointSpace");
+//    ft_sensor_util_->setFTDBData("base", "controlSpace", "jointSpace");
     robot_control_->setControlSpace(0); //JOINT_SPACE
 }
 
 void HandGuidingForm::on_rBOperateSpace_clicked()
 {
-    ft_sensor_util_->setFTDBData("base", "controlSpace", "operateSpace");
+//    ft_sensor_util_->setFTDBData("base", "controlSpace", "operateSpace");
     robot_control_->setControlSpace(1);  //OPERATION_SPACE
 }
 
 void HandGuidingForm::on_lEControlPeriod_textChanged(const QString &arg1)
 {
-    ft_sensor_util_->setFTDBData("base", "controlPeriod", arg1);
+//    ft_sensor_util_->setFTDBData("base", "controlPeriod", arg1);
 //    robot_control_->setControlPeriod(arg1.toDouble());
 }
 
@@ -709,7 +645,6 @@ void HandGuidingForm::on_cBRealTime_clicked()
         ui->cB_Tx->setEnabled(true);
         ui->cB_Ty->setEnabled(true);
         ui->cB_Tz->setEnabled(true);
-        ft_sensor_util_->enableDisplaySenssorData();
     }
     else
     {
@@ -719,20 +654,17 @@ void HandGuidingForm::on_cBRealTime_clicked()
         ui->cB_Tx->setEnabled(false);
         ui->cB_Ty->setEnabled(false);
         ui->cB_Tz->setEnabled(false);
-        ft_sensor_util_->disableDisplaySenssorData();
     }
 }
 
 void HandGuidingForm::on_hSFilter1_valueChanged(int value)
 {
-    ft_sensor_util_->setFTDBData("base", "filter1", QString::number(value));
-    robot_control_->setFilter1(value);
+    robot_control_->setSensorFilter(value);
 }
 
 void HandGuidingForm::on_hSFilter2_valueChanged(int value)
 {
-    ft_sensor_util_->setFTDBData("base", "filter2", QString::number(value));
-    robot_control_->setFilter2(value);
+    robot_control_->setControlFilter(value);
 }
 
 void HandGuidingForm::on_pBScreenShot_clicked()
@@ -760,7 +692,7 @@ void HandGuidingForm::drawRealtimeData(QFrame *frame)
     painter.drawLine(QPointF(0, 0), QPointF(0, height));
     painter.drawLine(QPointF(0, height/2), QPointF(width, height/2));
     painter.drawLine(QPointF(width-1, 0), QPointF(width-1, height));
-    byte flag = 0;
+    char flag = 0;
     if(ui->cB_Fx->checkState() == Qt::Checked)
         flag |= 0x01;
     if(ui->cB_Fy->checkState() == Qt::Checked)
@@ -774,8 +706,8 @@ void HandGuidingForm::drawRealtimeData(QFrame *frame)
     if(ui->cB_Tz->checkState() == Qt::Checked)
         flag |= 0x20;
     double extremum[4] = {100,-100,100,-100}; //minimum and maximum values of force and torque.
-    int count = ft_sensor_util_->getDisplayDataExtremum(extremum, flag);
-    if(count > ft_sensor_util_-> getPlotDataLength())
+    int count = /*ft_sensor_util_->getDisplayDataExtremum(extremum, flag)*/0;
+    if(count > /*ft_sensor_util_-> getPlotDataLength()*/0)
     {
         //clear the extra data for the plot
 //        std::vector<Wrench>::iterator itePre = ft_sensor_util_->m_sensor_data_display.begin();
@@ -796,16 +728,16 @@ void HandGuidingForm::drawRealtimeData(QFrame *frame)
     {
         painter.setPen(QPen(Qt::red,2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
         for(int i = 0; i < count-1; i++)
-            painter.drawLine(QPointF(i, height / 2 - ft_sensor_util_->m_sensor_data_display[i][0]*forceRatio),
-                    QPointF(i+1, height / 2 - ft_sensor_util_->m_sensor_data_display[i+1][0]*forceRatio));   // Fx
+            painter.drawLine(QPointF(i, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i][0]**/forceRatio),
+                    QPointF(i+1, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i+1][0]**/forceRatio));   // Fx
     }
 
     if(flag & 0x02)
     {
         painter.setPen(QPen(Qt::green,2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
         for(int i = 0; i < count-1; i++)
-            painter.drawLine(QPointF(i, height / 2 - ft_sensor_util_->m_sensor_data_display[i][1]*forceRatio),
-                             QPointF(i+1, height / 2 - ft_sensor_util_->m_sensor_data_display[i+1][1]*forceRatio));   // Fy
+            painter.drawLine(QPointF(i, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i][1]**/forceRatio),
+                             QPointF(i+1, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i+1][1]**/forceRatio));   // Fy
 
     }
 
@@ -813,16 +745,16 @@ void HandGuidingForm::drawRealtimeData(QFrame *frame)
     {
         painter.setPen(QPen(Qt::blue,2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
         for(int i = 0; i < count-1; i++)
-            painter.drawLine(QPointF(i, height / 2 - ft_sensor_util_->m_sensor_data_display[i][2]*forceRatio),
-                             QPointF(i+1, height / 2 - ft_sensor_util_->m_sensor_data_display[i+1][2]*forceRatio));   // Fz
+            painter.drawLine(QPointF(i, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i][2]**/forceRatio),
+                             QPointF(i+1, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i+1][2]**/forceRatio));   // Fz
     }
 
     if(flag & 0x08)
     {
         painter.setPen(QPen(Qt::magenta,2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
         for(int i = 0; i < count-1; i++)
-            painter.drawLine(QPointF(i, height / 2 - ft_sensor_util_->m_sensor_data_display[i][3]*torqueRatio),
-                             QPointF(i+1, height / 2 - ft_sensor_util_->m_sensor_data_display[i+1][3]*torqueRatio));   // Tx
+            painter.drawLine(QPointF(i, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i][3]**/torqueRatio),
+                             QPointF(i+1, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i+1][3]**/torqueRatio));   // Tx
 
     }
 
@@ -830,8 +762,8 @@ void HandGuidingForm::drawRealtimeData(QFrame *frame)
     {
         painter.setPen(QPen(Qt::cyan,2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
         for(int i = 0; i < count-1; i++)
-            painter.drawLine(QPointF(i, height / 2 - ft_sensor_util_->m_sensor_data_display[i][4]*torqueRatio),
-                             QPointF(i+1, height / 2 - ft_sensor_util_->m_sensor_data_display[i+1][4]*torqueRatio));   // Ty
+            painter.drawLine(QPointF(i, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i][4]**/torqueRatio),
+                             QPointF(i+1, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i+1][4]**/torqueRatio));   // Ty
 
     }
 
@@ -839,8 +771,8 @@ void HandGuidingForm::drawRealtimeData(QFrame *frame)
     {
         painter.setPen(QPen(Qt::darkGray,2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
         for(int i = 0; i < count-1; i++)
-            painter.drawLine(QPointF(i, height / 2 - ft_sensor_util_->m_sensor_data_display[i][5]*torqueRatio),
-                             QPointF(i+1, height / 2 - ft_sensor_util_->m_sensor_data_display[i+1][5]*torqueRatio));   // Tz
+            painter.drawLine(QPointF(i, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i][5]**/torqueRatio),
+                             QPointF(i+1, height / 2 - /*ft_sensor_util_->m_sensor_data_display[i+1][5]**/torqueRatio));   // Tz
 
     }
 
@@ -860,7 +792,6 @@ bool HandGuidingForm::eventFilter(QObject *watched, QEvent *event)
     else
         return QWidget::eventFilter(watched,event);
 }
-
 
 /******************** Admittance Control ********************/
 void HandGuidingForm::on_cB_Enable_FT_Control_clicked()
@@ -1220,11 +1151,6 @@ void HandGuidingForm::on_lETorqueZLimit_textChanged(const QString &arg1)
         updateDataBase(arg1, "parameter", "end_ft_limit", 6);
 }
 
-void HandGuidingForm::on_comBHandGuidingSwitchIO_currentTextChanged(const QString &arg1)
-{
-    robot_control_->setHandGuidingSwitchIO(arg1.toStdString());
-}
-
 void HandGuidingForm::on_lE_Robot_IP_editingFinished()
 {
 //    robot_control_->setRobotIP(ui->lE_Robot_IP->text().toStdString());
@@ -1249,12 +1175,10 @@ void HandGuidingForm::on_pushButton_clicked()
 {
     if(ui->pushButton->text() == "Start")
     {
-        robot_control_->enableForceControlThread(true);
         ui->pushButton->setText("Stop");
     }
     else
     {
-        robot_control_->enableForceControlThread(true);
         ui->pushButton->setText("Start");
         if(ui->cB_Enable_FT_Control->checkState() == Qt::Checked)
         {

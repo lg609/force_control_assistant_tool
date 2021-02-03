@@ -10,9 +10,6 @@
 #include <QMainWindow>
 #include <QFrame>
 
-#include <math.h>
-#include "sensor_data_process.h"
-#include "ft_sensor_util.h"
 #include "robot_control.h"
 
 namespace Ui {
@@ -142,7 +139,7 @@ private:
     //!
     void initialUI();
     //!
-    void initialDevice();
+    void initialPara();
     //!
     void updateUI();
     //!
@@ -152,8 +149,7 @@ private:
 
 private:
     Ui::HandGuidingForm *ui;
-    RobotControl *robot_control_;
-    FTSensorUtil *ft_sensor_util_;
+    RobotControl        *robot_control_;
 
     QTimer timer_;      //update data flow
     bool  cBSensorName_add_finished_;
@@ -197,7 +193,6 @@ private slots:
     void on_rBSelectTool_clicked();
     void on_pBScreenShot_clicked();
     void on_lE_Port_editingFinished();
-    void on_comBHandGuidingSwitchIO_currentTextChanged(const QString &arg1);
     void on_lE_Robot_IP_editingFinished();
     void on_lEPosX_2_textChanged(const QString &arg1);
     void on_lEPosY_2_textChanged(const QString &arg1);
@@ -212,8 +207,6 @@ private slots:
     void on_rBParallel_clicked();
     void on_lEOverEstimateDis_textChanged(const QString &arg1);
     void on_pushButton_clicked();
-    void on_cBRobotType_currentTextChanged(const QString &arg1);
-    void on_lEPayLoad_returnPressed();
 };
 
 #endif // HandGuidingForm_H

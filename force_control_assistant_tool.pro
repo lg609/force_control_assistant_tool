@@ -10,7 +10,7 @@ TEMPLATE = app
 
 DESTDIR += ./bin
 
-include(./peripherals/peripherals.pri)
+#include(./peripherals/peripherals.pri)
 include(./utility/utility.pri)
 INCLUDEPATH += $$PWD/include
 INCLUDEPATH += $$PWD/peripherals/include/
@@ -18,10 +18,8 @@ INCLUDEPATH += $$PWD/utility/include/
 INCLUDEPATH += $$PWD/../aral/aral_export/include/
 INCLUDEPATH += /usr/arcs/include
 
-
 HEADERS  += $$PWD/include/mainwindow.h \
             $$PWD/include/robot_control.h \
-
 
 SOURCES += $$PWD/src/main.cpp \
            $$PWD/src/mainwindow.cpp \

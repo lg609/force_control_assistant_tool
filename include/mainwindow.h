@@ -153,7 +153,6 @@ private:
 private:
     Ui::HandGuidingForm *ui;
     RobotControl *robot_control_;
-    FTSensorDataProcess *ft_sensor_data_process_;
     FTSensorUtil *ft_sensor_util_;
 
     QTimer timer_;      //update data flow

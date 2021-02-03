@@ -53,7 +53,6 @@ void HandGuidingForm::initialDevice()
 
     flag = ft_sensor_util_->insertFTDBData("base","connectName", "ttyUSB1");
     flag = ft_sensor_util_->getFTDBData("base", "connectName", connectName);
-    ft_sensor_data_process_->setConnectName(connectName.toStdString());
     flag = ft_sensor_util_->getFTDBData("base", "type", sensorType);
     if(!flag || sensorType == "")
     {
@@ -62,7 +61,6 @@ void HandGuidingForm::initialDevice()
         //default sensor -> optoforce
         flag = ft_sensor_util_->openDatabase("optoforce");
         ui->cBSensorName->setCurrentText("optoforce");
-        flag = ft_sensor_data_process_->sensorTypeSelect(sensorType.toStdString());
     }
     else
     {
@@ -287,7 +285,7 @@ void HandGuidingForm::updateData()
     ui->lETorqueY->setText(QString::number(endWrench[4],'f',5));
     ui->lETorqueZ->setText(QString::number(endWrench[5],'f',5));
 
-    Wrench data = ft_sensor_data_process_->getSensorData();
+    std::vector<double> data = robot_control_->getSensorData();
     ui->label_Fx->setText(QString::number(data[0],'f',5));
     ui->label_Fy->setText(QString::number(data[1],'f',5));
     ui->label_Fz->setText(QString::number(data[2],'f',5));
@@ -298,7 +296,7 @@ void HandGuidingForm::updateData()
     ui->label_T3D->setText(QString::number(sqrt(data[3]*data[3]+data[4]*data[4]+data[5]*data[5]),'f',5));
 
      //scan IO information
-    if(ft_sensor_data_process_->getSensorCalibrateStatus())
+    if(robot_control_->getSensorCalibrateStatus())
     {
         if(robot_control_->getHandGuidingSwitch())
             ui->pBStart->setStyleSheet("background-color:green");
@@ -418,7 +416,7 @@ void HandGuidingForm::on_lE_Port_editingFinished()
     }
     else
     {
-        flag = ft_sensor_data_process_->sensorTypeSelect(sensorType.toStdString(), connectName.toStdString());
+//        flag = ft_sensor_data_process_->sensorTypeSelect(sensorType.toStdString(), connectName.toStdString());
         if(flag)
             ui->label_Connect->setText("Connect");
         else
@@ -444,7 +442,6 @@ void HandGuidingForm::on_cBSensorName_currentIndexChanged(int /*index*/)
     else
         updateUI();
 
-    flag = ft_sensor_data_process_->sensorTypeSelect(sensorType.toStdString(), ui->lE_Port->text().toStdString());
     if(!flag)
     {
         ui->pBStart->setEnabled(false);
@@ -478,7 +475,6 @@ void HandGuidingForm::on_pBCalibration_clicked()
                 ft_sensor_util_->getFTDBData("parameter", "toolProperty", value);
 //                robot_control_->setToolDynamics(RigidBodyInertia(value[0],value[0]*Vector(value[1],value[2],value[3])));
                 ui->pBStart->setEnabled(true);
-                ft_sensor_data_process_->setSensorCalibrateStatus(true);
                 displayMessage("obatin sensor offset from database.");
             }
             memcpy(result, value, sizeof(double)*4);
@@ -534,7 +530,6 @@ void HandGuidingForm::on_pBCalibration_clicked()
     }
     else
     {
-        FTSensorDataProcess::s_sensor_data_calibrated = true;
         ui->pBStart->setEnabled(false);
         ui->pBCalibration->setText("Calibrate");
         ui->pBPos1->setEnabled(true);

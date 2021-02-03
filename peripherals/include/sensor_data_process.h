@@ -14,9 +14,7 @@
 
 #include "ft_sensor.h"
 #include "kunwei_sensor.h"
-#include "aral/robot_library_interface.hpp"
 
-using namespace ARAL;
 
 enum CALIBRATION_POS
 {
@@ -26,20 +24,14 @@ enum CALIBRATION_POS
     POSE_Total
 };
 
-typedef RLWrench Wrench;
 
-class FTSensorDataProcess
+/*class FTSensorDataProcess
 {
 public:
     FTSensorDataProcess();
     ~FTSensorDataProcess();
     
-    //! select sensor
-    bool sensorTypeSelect(std::string sensorType, std::string devName = "");
-    //!
-    inline void setConnectName(std::string connectName){connect_name_ = connectName;}
-
-    /******** get sensor data  information********/
+    /******** get sensor data  information*******
     //! poses for calibration
     void obtainCalibrationPos(int index);
     void obtainFTSensorData();
@@ -67,6 +59,6 @@ private:
     std::string connect_name_;
 
     const int control_period_ = 0.005;  //the width of the plot area
-};
+};*/
 
 #endif // FT_SENSOR_DATA_PROCESS_H

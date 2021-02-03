@@ -22,6 +22,8 @@ using namespace arcs::aubo_driver;
 #define SERVER_HOST "127.0.0.1"
 #define SERVER_PORT 8899
 
+typedef ARAL::RLWrench Wrench;
+
 enum DRAG_MODE
 {
     POSITION = 0,
@@ -96,6 +98,10 @@ public:
 
     void getRtdeData(AuboDriver *m_instance);
 
+    /**
+     * @brief 得到末端传感器在三种不同位姿下的测量值
+     * @param index：指定不同的位姿
+     */
     void obtainCalibrationPos(int index);
 
     void enableForceControlThread(bool);
@@ -115,6 +121,10 @@ public:
     void setOverEstimatedDis(const double dis);
     //!
     void setGoalWrench(const double* wrench);
+
+    std::vector<double> getSensorData(){return sensor_data_;}
+
+    bool getSensorCalibrateStatus(){return sensor_calibrated_;}
 
 
     /******** Calibration function ********/
@@ -203,7 +213,7 @@ private:
 
     std::vector<double> sensor_data_;
     std::vector<double> current_joints_;
-    std::vector<double> original_pose_;
+    bool sensor_calibrated_;
     static Wrench s_calibrationMeasurements[CALIBRATION_POS::POSE_Total];
 private:
 
@@ -238,6 +248,7 @@ private:
 
     std::thread force_control_Thread_;
     AuboDriver* aubo_driver;
+    std::mutex mutex_;
 };
 
 #endif // ROBOTCONTROL_H

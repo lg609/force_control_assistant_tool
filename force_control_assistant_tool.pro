@@ -11,7 +11,7 @@ DESTDIR = $$PWD/build
 
 INCLUDEPATH += $$PWD/include
 INCLUDEPATH += $$PWD/toml/include
-INCLUDEPATH += $$PWD/../aral/aral_export/include/
+INCLUDEPATH += $$PWD/../../aral/aral_export/include/
 INCLUDEPATH += /usr/arcs/include
 
 HEADERS  += $$PWD/include/mainwindow.h \
@@ -24,7 +24,7 @@ SOURCES += $$PWD/src/main.cpp \
 FORMS += mainwindow.ui
 
 #********linking library **********************************
-LIBS += -L$$PWD/../aral/aral_export/lib/  -laral_d
+LIBS += -L$$PWD/../../aral/aral_export/lib/  -laral_d
 LIBS += -L/usr/arcs/lib -laubo_driver
 LIBS += -lpthread
 

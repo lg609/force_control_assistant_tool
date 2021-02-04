@@ -115,6 +115,7 @@ void RobotControl::updateRobotStatus()
 #endif
 
     mutex_.lock();
+    sensor_data_ = {0,0,0,0,0,0};
     aral_interface_->rsUpdateEndFTSensor(sensor_data_.data());
     aral_interface_->rsUpdatJointPVA(cur_joint_pos_.data(), NULL, NULL);
     mutex_.unlock();
@@ -127,14 +128,14 @@ void RobotControl::updateRobotGoal()
     aral_interface_->rsSetRefTraj();
 }
 
-int RobotControl::getRobotOutput(std::vector<double> &joint_pos)
+int RobotControl::getRobotOutput()
 {
-    joint_pos.resize(ROBOT_DOF);
+    cmd_joint_pos_.resize(ROBOT_DOF);
     aral_interface_->fcGetRobotEndWrench(force_of_end_.data());
-    return aral_interface_->rsCalJointCommand(joint_pos.data());
+    return aral_interface_->rsCalJointCommand(cmd_joint_pos_.data());
 }
 
-void RobotControl::getRobotEndWrench(double * wrench)
+void RobotControl::getRobotEndWrench(double* wrench)
 {
     aral_interface_->fcGetRobotEndWrench(wrench);
 }
@@ -191,26 +192,26 @@ int RobotControl::forceControlThread()
     struct timespec next;
     clock_gettime(CLOCK_REALTIME, &next);
 
-    aral_interface_->fcEnable(true);
     int ret;
+
+    auto builder = aubo_driver->getRtdeInputBuilder();
+    aral_interface_->fcEnable(true);
     while(enable_thread_)
     {
-        updateRobotStatus();
-        updateRobotGoal();
-        if((ret = getRobotOutput(cmd_joint_pos_)) < 0)
+        updateRobotStatus();        //更新当前状态(包括机械臂关节和传感器状态)
+        updateRobotGoal();          //设置运动目标(包括参考轨迹和机械臂在力控坐标系下输出的wrench)
+        if((ret = getRobotOutput()) < 0)    //计算控制输出:机械臂关节轨迹或者驱动力矩
         {
             std::cerr<<"控制命令计算失败, 错误码:"<<ret<<std::endl;
             break;
         }
 
-        auto builder = aubo_driver->getRtdeInputBuilder();
         builder->servoJoint(cmd_joint_pos_);
-        builder->send();    //servoJ模式下发控制指令
+        builder->send();            //servoJ模式下发控制指令
 
         timespec_add_us(&next, control_period_ * 1000); // unit: us
         clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next, NULL);    //按照绝对时间进行休眠
     }
-
     aral_interface_->fcEnable(false);
 
     return 0;
@@ -219,7 +220,6 @@ int RobotControl::forceControlThread()
 void RobotControl::obtainCalibrationPos(const int& index)
 {
     //obtain the sensor data in pose 1 2,3;
-    sleep(1);       //wait for robot and sensor stable
     mutex_.lock();
     for(int i = 0; i < 6; i++)
         s_calibrationMeasurements[index][i] = sensor_data_[i];
@@ -251,6 +251,7 @@ void RobotControl::setControlPeriod(const int& period)
 
 void RobotControl::updateControlPara(const double& value, const int& index, const std::string& typeName)
 {
+    return;
     int type = para_table_[typeName];
     switch(type)
     {
@@ -284,7 +285,6 @@ void RobotControl::updateControlPara(const double& value, const int& index, cons
     case GOAL_WRENCH:goal_wrench_[index] = value;
         //                         setGoalWrench(goal_wrench_.data());
         break;
-
     }
 }
 
@@ -301,19 +301,13 @@ void RobotControl::setMaxRotSpeed(double rot)
 /******** Calibration function ********/
 int RobotControl::moveToTargetPose(int index)
 {
-    double data[3][6] = {{-15*M_PI/180, 15*M_PI/180,75*M_PI/180,60*M_PI/180,80*M_PI/180,0},
-                         {-36*M_PI/180,27*M_PI/180,95*M_PI/180,-27*M_PI/180,0*M_PI/180,0},
-                         {-36*M_PI/180,21*M_PI/180,100*M_PI/180,-6*M_PI/180,90*M_PI/180,0}};
     std::vector<double> joints(ROBOT_DOF);
-
-    memcpy(joints.data(), data[index], sizeof(double) * ROBOT_DOF);
-
-    for(int j = 0; j < SENSOR_DIMENSION; j++)
-        calibration_poses_[index][j] = joints[j];
-
-    try {
+    memcpy(joints.data(), calibration_poses_[index].data(), sizeof (double) * ROBOT_DOF);
+    try
+    {
         aubo_driver->moveJoint(joints, 0.5, 90 * M_PI / 180.);
-    } catch (exception e) {
+    }
+    catch (exception e) {
         std::cout<<e.what()<<std::endl;
     }
 
@@ -323,7 +317,7 @@ int RobotControl::moveToTargetPose(int index)
         if (distance(aubo_driver->getJointPositions(), joints) < 0.05)
             break;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));    //wait for robot and sensor stable
 
     return 0;
 }
@@ -369,7 +363,7 @@ void RobotControl::disableAdmittanceControl()
     aral_interface_->fcEnable(false);
 }
 
-void RobotControl::updateAdmittancePIDPara(const double& value, const int& index)
+void RobotControl::updateAdmittancePIDPara(const double& /*value*/, const int& /*index*/)
 {
 }
 
@@ -388,14 +382,9 @@ void RobotControl::setThreadMode(unsigned int mode)
     aral_interface_->fcSetCalThread(mode);
 }
 
-void RobotControl::setCalMethod(unsigned int type)
-{
-    aral_interface_->fcSetCalMethod(type);
-}
-
 void RobotControl::setControlSpace(unsigned int value)
 {
-    aral_interface_->fcSetSpace(value);
+    aral_interface_->fcSetTaskFrame((CoordTypeEnum)value);
 }
 
 void RobotControl::setSensorFilter(const double value)
@@ -468,7 +457,3 @@ void RobotControl::setFTSensorPose(double data[SENSOR_DIMENSION])
 {
     aral_interface_->mdlSetEndSensorPose(data, POS_RPY);
 }
-
-
-
-

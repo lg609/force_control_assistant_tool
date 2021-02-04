@@ -94,12 +94,10 @@ void HandGuidingForm::updateUI()
     if(calculateMethod == "Jacobian")
     {
         ui->rBJacobian->setChecked(true);
-        robot_control_->setCalMethod(0);
     }
     else
     {
         ui->rBIK->setChecked(true);
-        robot_control_->setCalMethod(1);
     }
 
     if(controlModel == "serial")
@@ -266,7 +264,7 @@ void HandGuidingForm::slot_sensor_overrange(QString str)
     displayMessage(str);
 }
 
-void HandGuidingForm::updateDataBase(QString arg1, QString table, QString name, int index)
+void HandGuidingForm::updateDataBase(QString arg1, QString /*table*/, QString name, int index)
 {
     robot_control_->updateControlPara(arg1.toDouble(), index-1, name.toStdString());
 }
@@ -346,31 +344,22 @@ void HandGuidingForm::on_lEPosRZ_2_textChanged(const QString &arg1)
 
 void HandGuidingForm::on_lE_Port_editingFinished()
 {
-    bool flag;
+    bool flag = true;
     QString sensorType = ui->cBSensorName->currentText();
     QString connectName = ui->lE_Port->text();
 
-    if(!flag)
-    {
-        QString str = "Data base error!";
-        displayMessage(str);
-    }
+    //        flag = ft_sensor_data_process_->sensorTypeSelect(sensorType.toStdString(), connectName.toStdString());
+    if(flag)
+        ui->label_Connect->setText("Connect");
     else
-    {
-//        flag = ft_sensor_data_process_->sensorTypeSelect(sensorType.toStdString(), connectName.toStdString());
-        if(flag)
-            ui->label_Connect->setText("Connect");
-        else
-            ui->label_Connect->setText("Disconnect");
-    }
-
+        ui->label_Connect->setText("Disconnect");
 }
 
 void HandGuidingForm::on_cBSensorName_currentIndexChanged(int /*index*/)
 {
     if(!cBSensorName_add_finished_)
         return;
-    bool flag;
+    bool flag = true;
     QString sensorType = ui->cBSensorName->currentText();
 
     if(!flag)
@@ -423,7 +412,6 @@ void HandGuidingForm::on_pBCalibration_clicked()
             FtSensorCalibrationResult result;
             if(robot_control_->calibrateFTSensor(result) == 0) //success
             {
-                bool flag;
                 Wrench sensorOffset;
                 memcpy(sensorOffset.data(), &result.offset, sizeof(double)*SENSOR_DIMENSION);
 //                ft_sensor_util_->setFTSensorOffsetToDB(sensorOffset);
@@ -480,13 +468,7 @@ void HandGuidingForm::getCalibrationPose(int index)
 {
     if(ui->cBFirst->checkState() == Qt::Checked)
     {
-        double joint_angle[6];
-        bool flag;
-        robot_control_->getCalibrationPose(index, joint_angle);
 
-        QString sensorType = ui->cBSensorName->currentText();
-        for(int i = 0; i < SENSOR_DIMENSION; i++)
-         ;
     }
     else
         robot_control_->moveToTargetPose(index);
@@ -607,13 +589,13 @@ void HandGuidingForm::on_rBPose_clicked()
 void HandGuidingForm::on_rBJacobian_clicked()
 {
 //    ft_sensor_util_->setFTDBData("base", "calculateMethod", "Jacobian");
-    robot_control_->setCalMethod(0);  //Jacobian
+//    robot_control_->setCalMethod(0);  //Jacobian
 }
 
 void HandGuidingForm::on_rBIK_clicked()
 {
 //    ft_sensor_util_->setFTDBData("base", "calculateMethod", "IK");
-    robot_control_->setCalMethod(1);  //IK
+//    robot_control_->setCalMethod(1);  //IK
 }
 
 void HandGuidingForm::on_rBJointSpace_clicked()
@@ -628,7 +610,7 @@ void HandGuidingForm::on_rBOperateSpace_clicked()
     robot_control_->setControlSpace(1);  //OPERATION_SPACE
 }
 
-void HandGuidingForm::on_lEControlPeriod_textChanged(const QString &arg1)
+void HandGuidingForm::on_lEControlPeriod_textChanged(const QString &/*arg1*/)
 {
 //    ft_sensor_util_->setFTDBData("base", "controlPeriod", arg1);
 //    robot_control_->setControlPeriod(arg1.toDouble());

@@ -79,7 +79,7 @@ public:
     //!
     void updateRobotGoal();
     //!
-    int getRobotOutput(std::vector<double> &joint_pos);
+    int getRobotOutput();
     //!
     void getRobotEndWrench(double* wrench);
     //!
@@ -131,15 +131,20 @@ public:
     //!
     void setGoalWrench(const double* wrench);
 
-    std::vector<double> getSensorData(){return sensor_data_;}
+    std::vector<double> getSensorData()
+    {
+        mutex_.lock();
+        std::vector<double> data = sensor_data_;        //此处需要加互斥锁进行数据拷贝
+        mutex_.unlock();
+        return data;
+    }
 
     bool getSensorCalibrateStatus(){return sensor_calibrated_;}
 
 
     /******** Calibration function ********/
     int moveToTargetPose(int index);
-    //!
-    void getCalibrationPose(int index, double* joint_angle);
+
     //!
     int calibrateFTSensor(FtSensorCalibrationResult &result);
 
@@ -176,8 +181,6 @@ public:
     void setForceControlMode(unsigned int mode);
     //!
     void setThreadMode(unsigned int mode);
-    //!
-    void setCalMethod(unsigned int type);
     //!
     void setControlSpace(unsigned int value);
     //!

@@ -21,6 +21,7 @@ using namespace arcs::aubo_driver;
 
 
 #define CALIBRATION_POS_TOTAL 3
+#define INERTIA_DIM 9
 
 typedef ARAL::RLWrench Wrench;
 
@@ -156,13 +157,12 @@ public:
     //!
     void updateControlPara(const double& value, const int& index, const std::string& type);
     //!
-    void setToolDynamicsFromFTSensor(const RigidBodyInertia &I);
+    void setToolInertia(const double data[INERTIA_DIM]);
     //!
     void setToolPose(double data[SENSOR_DIMENSION]);
     //!
     void setFTSensorPose(double data[SENSOR_DIMENSION]);
     //!
-    RigidBodyInertia getToolDynamics(){return tool_dynamics;}
 
     /******************** Admittance Control ********************/
     // 使能奇异防护功能
@@ -202,7 +202,6 @@ private:
     std::map<std::string, int> para_table_;
 
 /****************控制使用变量************************/
-    RigidBodyInertia tool_dynamics;
     std::vector<double> cart_mass_;
     std::vector<double> cart_damp_;
     std::vector<double> cart_stiffness_;
@@ -216,7 +215,7 @@ private:
     Wrench goal_wrench_;
     std::vector<double> cmd_joint_pos_;
 
-
+    std::vector<double> tool_inertia_;                          //工具惯性参数
     FtSensorCalibrationResult ft_sensor_calib_res_;             //传感器标定结果
     Wrench s_calibrationMeasurements[CALIBRATION_POS_TOTAL];    //传感器标定对应的3个传感器数值
     JointArray calibration_poses_[CALIBRATION_POS_TOTAL];       //传感器标定对应的3个机器人位置

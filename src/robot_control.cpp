@@ -112,10 +112,10 @@ void RobotControl::updateRobotStatus()
 {
 #ifdef _Test
     sensor_data_ = {0,0,2,0,0,0};
+    sensor_data_ = {0,0,0,0,0,0};
 #endif
 
     mutex_.lock();
-    sensor_data_ = {0,0,0,0,0,0};
     aral_interface_->rsUpdateEndFTSensor(sensor_data_.data());
     aral_interface_->rsUpdatJointPVA(cur_joint_pos_.data(), NULL, NULL);
     mutex_.unlock();
@@ -193,7 +193,6 @@ int RobotControl::forceControlThread()
     clock_gettime(CLOCK_REALTIME, &next);
 
     int ret;
-
     auto builder = aubo_driver->getRtdeInputBuilder();
     aral_interface_->fcEnable(true);
     while(enable_thread_)
@@ -338,6 +337,7 @@ int RobotControl::calibrateFTSensor(FtSensorCalibrationResult &result)
     if(aral_interface_->calibToolAndSensor(calibration_poses_, s_calibrationMeasurements, result) == 0)
     {
         aral_interface_->rsUpdateEndFTSensorOffset(result.offset);
+        aral_interface_->mdlSetToolInertialFromFTSensor(result.mass, result.com.data(), tool_inertia_.data());
         sensor_calibrated_ = true;
     }
 
@@ -345,11 +345,6 @@ int RobotControl::calibrateFTSensor(FtSensorCalibrationResult &result)
 }
 
 /******** Control Parameter function ********/
-
-void RobotControl::setToolDynamicsFromFTSensor(const RigidBodyInertia &I)
-{
-    aral_interface_->mdlSetToolInertialFromFTSensor(I.mass, I.com.data(), I.inertial);
-}
 
 /******************** Admittance Control ********************/
 
@@ -451,6 +446,12 @@ void RobotControl::setGoalWrench(const double* wrench)
 void RobotControl::setToolPose(double data[SENSOR_DIMENSION])
 {
     aral_interface_->mdlSetToolPose(data, POS_RPY);
+}
+
+void RobotControl::setToolInertia(const double data[INERTIA_DIM])
+{
+    tool_inertia_.resize(INERTIA_DIM);
+    memcpy(tool_inertia_.data(), data, sizeof(double) * INERTIA_DIM);
 }
 
 void RobotControl::setFTSensorPose(double data[SENSOR_DIMENSION])

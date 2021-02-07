@@ -36,6 +36,13 @@ void HandGuidingForm::initialPara()
         std::cerr<<" 建立机器人实例失败!"<<std::endl;
         exit(-2);
     }
+    std::vector<double> sensor_pose = toml::find<std::vector<double>>(robot, "sensor_pose");
+    std::vector<double> tool_pose = toml::find<std::vector<double>>(robot, "tool_pose");
+    std::vector<double> tool_inertia = toml::find<std::vector<double>>(robot, "tool_inertia");
+    robot_control_->setFTSensorPose(sensor_pose.data());
+    robot_control_->setToolPose(tool_pose.data());
+    robot_control_->setToolInertia(tool_inertia.data());
+
 
     const auto forceControl = toml::find(config, "ForceControl");
     std::vector<double> cart_mass = toml::find<std::vector<double>>(forceControl, "cart_mass");
@@ -171,22 +178,6 @@ void HandGuidingForm::updateUI()
     ui->lETorqueXLimit->setText(QString::number(data[3]));
     ui->lETorqueYLimit->setText(QString::number(data[4]));
     ui->lETorqueZLimit->setText(QString::number(data[5]));
-
-//    robot_control_->setToolPose(data);
-//    ui->lEPosX->setText(QString::number(data[0]));
-//    ui->lEPosY->setText(QString::number(data[1]));
-//    ui->lEPosZ->setText(QString::number(data[2]));
-//    ui->lEPosRX->setText(QString::number(data[3]));
-//    ui->lEPosRY->setText(QString::number(data[4]));
-//    ui->lEPosRZ->setText(QString::number(data[5]));
-
-//    robot_control_->setFTSensorPose(data);
-//    ui->lEPosX_2->setText(QString::number(data[0]));
-//    ui->lEPosY_2->setText(QString::number(data[1]));
-//    ui->lEPosZ_2->setText(QString::number(data[2]));
-//    ui->lEPosRX_2->setText(QString::number(data[3]));
-//    ui->lEPosRY_2->setText(QString::number(data[4]));
-//    ui->lEPosRZ_2->setText(QString::number(data[5]));
 }
 
 void HandGuidingForm::initialUI()

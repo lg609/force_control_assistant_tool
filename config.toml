@@ -4,21 +4,24 @@
 name = "aubo_i5"
 server = "192.168.1.23"
 port = 30001
+sensor_pose = [0.0, 0.0, 0.04, 0.0, 0.0, 0.0]	#XYZ RPY
+tool_pose = [0.0, 0.0, 0.18, 0.0, 0.0, 0.0]	#XYZ RPY
+tool_inertia = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]	#目前无法辨识的参数,在拖动示教等低速运动的情况下,该参数影响不大
 
 [ForceControl]
 control_mode = 1
 selection_vector = [0, 0, 1, 0, 0, 0]
-end_ft_sensor_threshold = [0.0, 0.0, 0.1, 0.0, 0.0, 0.0]
+end_ft_sensor_threshold = [1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
 end_ft_sensor_limit = [200.0, 200.0, 200.0, 20.0, 20.0, 20.0]
-cart_mass = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-cart_damp = [200.0, 200.0, 200.0, 200.0, 200.0, 200.0]
-cart_stiffness = [10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+cart_mass = [1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+cart_damp = [200.0, 200.0, 200.0, 10.0, 10.0, 10.0]
+cart_stiffness = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 [MotionControl]
 control_type = 1
 control_period = 5	#unit:ms
-max_tran_speed = 0.2
-max_rot_speed = 0.25
+max_tran_speed = 0.25
+max_rot_speed = 0.5
 calibration_pose1 = [-0.261799, 0.261799, 1.309, 1.0472, 1.39626, 0.0]
 calibration_pose2 = [-0.628319, 0.471239, 1.65806, -0.471239, 0.0, 0.0]
 calibration_pose3 = [-0.628319, 0.366519, 1.74533, -0.10472, 1.5708, 0.0]

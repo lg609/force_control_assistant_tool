@@ -115,6 +115,10 @@ public:
     void setEndFTSensorLimit(double data[SENSOR_DIMENSION]);
     // 获得传感器最大响应阈值
     std::vector<double> getEndFTSensorLimit(){return end_ft_limit_;}
+    // 设置传感器灵敏度
+    void setEndFTSensorSensitivity(double data[SENSOR_DIMENSION]);
+    // 获得传感器灵敏度
+    std::vector<double> getEndFTSensorSensitivity(){return end_ft_sensitivity_;}
     // 设置末端刚度系数
     int setCartStiffness(double data[CARTESIAN_FREEDOM]);
     // 获得末端刚度系数
@@ -211,6 +215,7 @@ private:
     CartArray constraint_para_;
     std::vector<double> end_ft_threshold_;
     std::vector<double> end_ft_limit_;
+    std::vector<double> end_ft_sensitivity_;
     Wrench force_of_end_;
     Wrench goal_wrench_;
     std::vector<double> cmd_joint_pos_;

@@ -13,6 +13,7 @@ control_mode = 1
 selection_vector = [0, 0, 1, 0, 0, 0]
 end_ft_sensor_threshold = [1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
 end_ft_sensor_limit = [200.0, 200.0, 200.0, 20.0, 20.0, 20.0]
+sensor_sensitivity = [1.0, 1.0, 1.0, 5.0, 5.0, 5.0]
 cart_mass = [1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
 cart_damp = [200.0, 200.0, 200.0, 10.0, 10.0, 10.0]
 cart_stiffness = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

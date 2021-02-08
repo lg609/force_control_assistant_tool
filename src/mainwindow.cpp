@@ -51,6 +51,7 @@ void HandGuidingForm::initialPara()
     std::vector<int> selection_vector = toml::find<std::vector<int>>(forceControl, "selection_vector");
     std::vector<double> end_ft_sensor_threshold = toml::find<std::vector<double>>(forceControl, "end_ft_sensor_threshold");
     std::vector<double> end_ft_sensor_limit = toml::find<std::vector<double>>(forceControl, "end_ft_sensor_limit");
+    std::vector<double> sensor_sensitivity = toml::find<std::vector<double>>(forceControl, "sensor_sensitivity");
 
     robot_control_->setCartMass(cart_mass.data());
     robot_control_->setCartDamp(cart_damp.data());
@@ -58,6 +59,7 @@ void HandGuidingForm::initialPara()
     robot_control_->setSelectionVector(selection_vector.data());
     robot_control_->setEndFTSensorThreshold(end_ft_sensor_threshold.data());
     robot_control_->setEndFTSensorLimit(end_ft_sensor_limit.data());
+    robot_control_->setEndFTSensorSensitivity(sensor_sensitivity.data());
 
     const auto motionControl = toml::find(config, "MotionControl");
     int control_period = toml::find<int>(motionControl, "control_period");

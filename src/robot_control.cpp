@@ -412,6 +412,13 @@ void RobotControl::setEndFTSensorLimit(double data[SENSOR_DIMENSION])
     aral_interface_->fcSetEndFTSensorLimit(data);
 }
 
+void RobotControl::setEndFTSensorSensitivity(double data[SENSOR_DIMENSION])
+{
+    end_ft_sensitivity_.resize(CARTESIAN_FREEDOM);
+    memcpy(end_ft_sensitivity_.data(), data, sizeof (double)*CARTESIAN_FREEDOM);
+    aral_interface_->fcSetSensitivity(data);
+}
+
 int RobotControl::setCartStiffness(double data[CARTESIAN_FREEDOM])
 {
     cart_stiffness_.resize(CARTESIAN_FREEDOM);
